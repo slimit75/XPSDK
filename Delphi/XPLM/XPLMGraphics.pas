@@ -72,6 +72,18 @@ TYPE
      ,xplm_Tex_AircraftLiteMap                 = 2
 {$ENDIF XPLM_DEPRECATED}
  
+{$IFDEF XPLM420}
+     { The weather radar instrument texture as controlled by the pilot-side radar }
+     { controls                                                                   }
+     ,xplm_Tex_Radar_Pilot                     = 3
+{$ENDIF XPLM420}
+ 
+{$IFDEF XPLM420}
+     {         The weather radar instrument texture as controlled by the          }
+     {         copilot-side radar controls                                        }
+     ,xplm_Tex_Radar_Copilot                   = 4
+{$ENDIF XPLM420}
+ 
    );
    PXPLMTextureID = ^XPLMTextureID;
 
@@ -166,18 +178,16 @@ TYPE
                                         inCount             : Integer);
     cdecl; external XPLM_DLL;
 
-{$IFDEF XPLM_DEPRECATED}
    {
     XPLMGetTexture
     
     XPLMGetTexture returns the OpenGL texture ID of an X-Plane texture based on
     a generic identifying code.  For example, you can get the texture for
-    X-Plane's UI bitmaps.
+    X-Plane's  weather radar.
    }
    FUNCTION XPLMGetTexture(
                                         inTexture           : XPLMTextureID) : Integer;
     cdecl; external XPLM_DLL;
-{$ENDIF XPLM_DEPRECATED}
 
    {
     XPLMWorldToLocal

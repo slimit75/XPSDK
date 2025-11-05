@@ -154,8 +154,8 @@ typedef int XPLMPluginID;
 /* X-Plane itself                                                             */
 #define XPLM_PLUGIN_XPLANE   (0)
 
-/* The current XPLM revision is 4.1.1 (411).                                  */
-#define kXPLM_Version        (411)
+/* The current XPLM revision is 4.2.1 (421).                                  */
+#define kXPLM_Version        (421)
 
 /*
  * XPLMKeyFlags
@@ -538,6 +538,111 @@ enum {
     /* X-Plane shows the cursor but lets you select an OS cursor.                 */
     xplm_CursorCustom                        = 3,
 
+#if defined(XPLM420)
+    /* X-Plane shows a small bi-directional knob-rotating cursor.                 */
+    xplm_CursorRotateSmall                   = 4,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a small counter-clockwise knob-rotating cursor.              */
+    xplm_CursorRotateSmallLeft               = 5,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a small clockwise knob-rotating cursor.                      */
+    xplm_CursorRotateSmallRight              = 6,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a medium bi-directional knob-rotating cursor.                */
+    xplm_CursorRotateMedium                  = 7,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a medium counter-clockwise knob-rotating cursor.             */
+    xplm_CursorRotateMediumLeft              = 8,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a medium clockwise knob-rotating cursor.                     */
+    xplm_CursorRotateMediumRight             = 9,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a large bi-directional knob-rotating cursor.                 */
+    xplm_CursorRotateLarge                   = 10,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a large counter-clockwise knob-rotating cursor.              */
+    xplm_CursorRotateLargeLeft               = 11,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a large clockwise knob-rotating cursor.                      */
+    xplm_CursorRotateLargeRight              = 12,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows an up-and-down arrows cursor.                                */
+    xplm_CursorUpDown                        = 13,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a down arrow cursor.                                         */
+    xplm_CursorDown                          = 14,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows an up arrow cursor.                                          */
+    xplm_CursorUp                            = 15,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a left-right arrow cursor.                                   */
+    xplm_CursorLeftRight                     = 16,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a left arrow cursor.                                         */
+    xplm_CursorLeft                          = 17,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a right arrow cursor.                                        */
+    xplm_CursorRight                         = 18,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a button-pushing cursor.                                     */
+    xplm_CursorButton                        = 19,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a handle-grabbing cursor.                                    */
+    xplm_CursorHandle                        = 20,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a four-arrows cursor.                                        */
+    xplm_CursorFourArrows                    = 21,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a cursor to drag a horizontal splitter bar.                  */
+    xplm_CursorSplitterH                     = 22,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows a cursor to drag a vertical splitter bar.                    */
+    xplm_CursorSplitterV                     = 23,
+
+#endif /* XPLM420 */
+#if defined(XPLM420)
+    /* X-Plane shows an I-Beam cursor for text editing.                           */
+    xplm_CursorText                          = 24,
+
+#endif /* XPLM420 */
 
 };
 typedef int XPLMCursorStatus;

@@ -32,6 +32,30 @@ SDK website explains this process in more detail.
 
 This section contains per-release notes for the history of the X-Plane SDK.
 
+X-Plane SDK Release 4.2.0 10/31/2025
+
+The 4.2.0 SDK includes new API functionality:
+
+ - New weather APIs allow plugins to specify weather at multiple points for
+   custom weather that varies spatially.
+   
+ - The weather info structure is extended to support new data fields.
+ 
+ - Extended texture ID enumerations to access the radar return texture for
+   avionics drawing callbacks.
+
+ - Instances can be located using double precision coordinates, and can be
+   set to automatically move to match scenery coordinate shifts.
+
+ - Extended cursor enumerations for display and avionic cursor callbacks.
+
+This version of the SDK requires X-Plane 12.3.0 or newer. This version of the
+SDK is compiled against FMOD 2.0.2.
+
+X-Plane SDK Release 4.1.2 1/6/2025
+
+Internal changes to support 'safe mode' in the simulator.
+
 X-Plane SDK Release 4.1.1 10/10/2024
 
 This is a bug fix to the SDK itself; the dylib link paths on the included

@@ -276,6 +276,33 @@ typedef struct {
 } XPLMDrawInfo_t;
 #endif /* XPLM200 */
 
+#if defined(XPLM420)
+/*
+ * XPLMDrawInfoDouble_t
+ * 
+ * The XPLMDrawInfo_t structure contains positioning info for one object that
+ * is to be drawn. Be sure to set structSize to the size of the structure for
+ * future expansion.
+ *
+ */
+typedef struct {
+    /* Set this to the size of this structure!                                    */
+     int                       structSize;
+    /* X location of the object in local coordinates.                             */
+     double                    x;
+    /* Y location of the object in local coordinates.                             */
+     double                    y;
+    /* Z location of the object in local coordinates.                             */
+     double                    z;
+    /* Pitch in degres to rotate the object, positive is up.                      */
+     double                    pitch;
+    /* Heading in local coordinates to rotate the object, clockwise.              */
+     double                    heading;
+    /* Roll to rotate the object.                                                 */
+     double                    roll;
+} XPLMDrawInfoDouble_t;
+#endif /* XPLM420 */
+
 #if defined(XPLM210)
 /*
  * XPLMObjectLoaded_f
