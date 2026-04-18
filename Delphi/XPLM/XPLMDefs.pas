@@ -1,5 +1,5 @@
 {
-   Copyright 2005-2022 Laminar Research, Sandy Barbour and Ben Supnik All
+   Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
    rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
 }
 
@@ -81,8 +81,8 @@ CONST
     { X-Plane itself                                                             }
    XPLM_PLUGIN_XPLANE   = (0);
 
-    { The current XPLM revision is 4.2.1 (421).                                  }
-   kXPLM_Version        = (421);
+    { The current XPLM revision is 4.3.0 (430).                                  }
+   kXPLM_Version        = (430);
 
    {
     XPLMKeyFlags

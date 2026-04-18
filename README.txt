@@ -32,6 +32,25 @@ SDK website explains this process in more detail.
 
 This section contains per-release notes for the history of the X-Plane SDK.
 
+X-Plane SDK Release 4.3.0 2/21/2026
+
+The 4.3.0 SDK includes new API functionality:
+
+ - The new XPLMInitFlight and XPLMUpdateFlight APIs in XPLMPlanes provide
+   complete control over creating and editing how the user's flight starts.
+   
+   These APIs supercede and expose deeper functinality than the previous
+   XPLMPlaceUserAtAirport and XPLMPlaceUserAtLocation APIs.
+   
+ - The third MDCU is exposed in the avionics API.
+
+This version of the SDK requires X-Pane 12.4.0 or newer.
+
+  Erata note: the 4.3.0 SDK incorrectly identifies itself as version "421"
+  in the version includeded in X-Plane 12.4.0. Despite this, all entry points
+  are present. The version number is corrected to 430 to match published docs
+  as of X-Plane 12.4.1.
+
 X-Plane SDK Release 4.2.0 10/31/2025
 
 The 4.2.0 SDK includes new API functionality:
