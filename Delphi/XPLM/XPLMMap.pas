@@ -1,5 +1,5 @@
 {
-   Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
+   Copyright 2005-2026 Laminar Research, Sandy Barbour and Ben Supnik All
    rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
 }
 
@@ -57,6 +57,21 @@ INTERFACE
 USES
     XPLMDefs;
    {$A4}
+
+TYPE
+   XPLMChar   = AnsiChar;
+   XPLMString = PAnsiChar;
+
+CONST
+{$IFDEF MSWINDOWS}
+   XPLM_DLL = 'XPLM_64.dll';
+{$ENDIF}
+{$IFDEF DARWIN}
+   XPLM_DLL = 'XPLM.framework/XPLM';
+{$ENDIF}
+{$IFDEF LINUX}
+   XPLM_DLL = 'XPLM_64.so';
+{$ENDIF}
 {$IFDEF XPLM300}
 {___________________________________________________________________________
  * DRAWING CALLBACKS
@@ -130,7 +145,7 @@ TYPE
                                     mapUnitsPerUserInterfaceUnit: Single;
                                     mapStyle            : XPLMMapStyle;
                                     projection          : XPLMMapProjectionID;
-                                    inRefcon            : pointer); cdecl;
+                                    inRefcon            : pointer); cdecl;    { Can be nil }
 
    {
     XPLMMapIconDrawingCallback_f
@@ -155,7 +170,7 @@ TYPE
                                     mapUnitsPerUserInterfaceUnit: Single;
                                     mapStyle            : XPLMMapStyle;
                                     projection          : XPLMMapProjectionID;
-                                    inRefcon            : pointer); cdecl;
+                                    inRefcon            : pointer); cdecl;    { Can be nil }
 
    {
     XPLMMapLabelDrawingCallback_f
@@ -180,7 +195,7 @@ TYPE
                                     mapUnitsPerUserInterfaceUnit: Single;
                                     mapStyle            : XPLMMapStyle;
                                     projection          : XPLMMapProjectionID;
-                                    inRefcon            : pointer); cdecl;
+                                    inRefcon            : pointer); cdecl;    { Can be nil }
 
 {$ENDIF XPLM300}
 {$IFDEF XPLM300}
@@ -221,7 +236,7 @@ TYPE
                                     inLayer             : XPLMMapLayerID;
                                     inTotalMapBoundsLeftTopRightBottom: PSingle;
                                     projection          : XPLMMapProjectionID;
-                                    inRefcon            : pointer); cdecl;
+                                    inRefcon            : pointer); cdecl;    { Can be nil }
 
    {
     XPLMMapWillBeDeletedCallback_f
@@ -232,7 +247,7 @@ TYPE
    }
      XPLMMapWillBeDeletedCallback_f = PROCEDURE(
                                     inLayer             : XPLMMapLayerID;
-                                    inRefcon            : pointer); cdecl;
+                                    inRefcon            : pointer); cdecl;    { Can be nil }
 
 {$ENDIF XPLM300}
 {$IFDEF XPLM300}
@@ -276,11 +291,11 @@ TYPE
 CONST
     { Globally unique identifier for X-Plane's Map window, used as the           }
     { mapToCreateLayerIn parameter in XPLMCreateMapLayer_t                       }
-   XPLM_MAP_USER_INTERFACE = "XPLM_MAP_USER_INTERFACE";
+   XPLM_MAP_USER_INTERFACE = 'XPLM_MAP_USER_INTERFACE';
 
     { Globally unique identifier for X-Plane's Instructor Operator Station       }
     { window, used as the mapToCreateLayerIn parameter in XPLMCreateMapLayer_t   }
-   XPLM_MAP_IOS         = "XPLM_MAP_IOS";
+   XPLM_MAP_IOS         = 'XPLM_MAP_IOS';
 
    {
     XPLMCreateMapLayer_t
@@ -349,6 +364,7 @@ TYPE
     XPLMRegisterMapCreationHook() to get a notification each time a new map is
     opened in X-Plane, at which time you can create layers in it.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMCreateMapLayer(
                                         inParams            : PXPLMCreateMapLayer_t) : XPLMMapLayerID;
     cdecl; external XPLM_DLL;
@@ -360,6 +376,7 @@ TYPE
     XPLMMapWillBeDeletedCallback_f if applicable). Returns true if a deletion
     took place.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMDestroyMapLayer(
                                         inLayer             : XPLMMapLayerID) : Integer;
     cdecl; external XPLM_DLL;
@@ -376,7 +393,7 @@ TYPE
 TYPE
      XPLMMapCreatedCallback_f = PROCEDURE(
                                     mapIdentifier       : XPLMString;
-                                    refcon              : pointer); cdecl;
+                                    inRefcon            : pointer); cdecl;    { Can be nil }
 
    {
     XPLMRegisterMapCreationHook
@@ -388,18 +405,20 @@ TYPE
     Note that you will not be notified about any maps that already exist---you
     can use XPLMMapExists() to check for maps that were created previously.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMRegisterMapCreationHook(
-                                        callback            : XPLMMapCreatedCallback_f;
-                                        refcon              : pointer);
+                                        callback            : XPLMMapCreatedCallback_f;    { Can be nil }
+                                        inRefcon            : pointer);    { Can be nil }
     cdecl; external XPLM_DLL;
 
    {
     XPLMMapExists
     
-    Returns 1 if the map with the specified identifier already exists in
+    Returns true if the map with the specified identifier already exists in
     X-Plane. In that case, you can safely call XPLMCreateMapLayer() specifying
     that your layer should be added to that map.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMMapExists(
                                         mapIdentifier       : XPLMString) : Integer;
     cdecl; external XPLM_DLL;
@@ -478,6 +497,7 @@ TYPE
     you can request an arbitrary number of icons to be drawn from within your
     callback).
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMDrawMapIconFromSheet(
                                         layer               : XPLMMapLayerID;
                                         inPngPath           : XPLMString;
@@ -500,6 +520,7 @@ TYPE
     XPLMMapLabelDrawingCallback_f (but you can request an arbitrary number of
     text labels to be drawn from within your callback).
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMDrawMapLabel(
                                         layer               : XPLMMapLayerID;
                                         inText              : XPLMString;
@@ -540,6 +561,7 @@ TYPE
     XPLMMapPrepareCacheCallback_f, XPLMMapDrawingCallback_f,
     XPLMMapIconDrawingCallback_f, or XPLMMapLabelDrawingCallback_f.)
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMMapProject(
                                         projection          : XPLMMapProjectionID;
                                         latitude            : Real;
@@ -558,6 +580,7 @@ TYPE
     XPLMMapPrepareCacheCallback_f, XPLMMapDrawingCallback_f,
     XPLMMapIconDrawingCallback_f, or XPLMMapLabelDrawingCallback_f.)
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMMapUnproject(
                                         projection          : XPLMMapProjectionID;
                                         mapX                : Single;
@@ -576,6 +599,7 @@ TYPE
     XPLMMapPrepareCacheCallback_f, XPLMMapDrawingCallback_f,
     XPLMMapIconDrawingCallback_f, or XPLMMapLabelDrawingCallback_f.)
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMMapScaleMeter(
                                         projection          : XPLMMapProjectionID;
                                         mapX                : Single;
@@ -595,6 +619,7 @@ TYPE
     XPLMMapPrepareCacheCallback_f, XPLMMapDrawingCallback_f,
     XPLMMapIconDrawingCallback_f, or XPLMMapLabelDrawingCallback_f.)
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMMapGetNorthHeading(
                                         projection          : XPLMMapProjectionID;
                                         mapX                : Single;
@@ -602,6 +627,22 @@ TYPE
     cdecl; external XPLM_DLL;
 
 {$ENDIF XPLM300}
+{___________________________________________________________________________
+ * Host API's
+ ___________________________________________________________________________}
+
+CONST
+   XPLMMapHostApiVersion = 0;
+
+
+
+
+
+
+
+
+
+
 
 IMPLEMENTATION
 

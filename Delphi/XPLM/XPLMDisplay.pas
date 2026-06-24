@@ -1,5 +1,5 @@
 {
-   Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
+   Copyright 2005-2026 Laminar Research, Sandy Barbour and Ben Supnik All
    rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
 }
 
@@ -83,8 +83,23 @@ INTERFACE
 }
 
 USES
-    XPLMDefs;
+    XPLMDefs, XPLMUtilities;
    {$A4}
+
+TYPE
+   XPLMChar   = AnsiChar;
+   XPLMString = PAnsiChar;
+
+CONST
+{$IFDEF MSWINDOWS}
+   XPLM_DLL = 'XPLM_64.dll';
+{$ENDIF}
+{$IFDEF DARWIN}
+   XPLM_DLL = 'XPLM.framework/XPLM';
+{$ENDIF}
+{$IFDEF LINUX}
+   XPLM_DLL = 'XPLM_64.so';
+{$ENDIF}
 {___________________________________________________________________________
  * DRAWING CALLBACKS
  ___________________________________________________________________________}
@@ -212,8 +227,8 @@ TYPE
     
     This is the prototype for a low level drawing callback.  You are passed in
     the phase and whether it is before or after.  If you are before the phase,
-    return 1 to let X-Plane draw or 0 to suppress X-Plane drawing.  If you are
-    after the phase the return value is ignored.
+    return true to let X-Plane draw or false to suppress X-Plane drawing.  If
+    you are after the phase the return value is ignored.
     
     Refcon is a unique value that you specify when registering the callback,
     allowing you to slip a pointer to your own data to the callback.
@@ -225,15 +240,15 @@ TYPE
      XPLMDrawCallback_f = FUNCTION(
                                     inPhase             : XPLMDrawingPhase;
                                     inIsBefore          : Integer;
-                                    inRefcon            : pointer) : Integer; cdecl;
+                                    inRefcon            : pointer) : Integer; cdecl;    { Can be nil }
 
    {
     XPLMRegisterDrawCallback
     
     This routine registers a low level drawing callback.  Pass in the phase you
     want to be called for and whether you want to be called before or after. 
-    This routine returns 1 if the registration was successful, or 0 if the
-    phase does not exist in this version of X-Plane.  You may register a
+    This routine returns true if the registration was successful, or false if
+    the phase does not exist in this version of X-Plane.  You may register a
     callback multiple times for the same or different phases as long as the
     refcon is unique each time.
     
@@ -241,11 +256,12 @@ TYPE
     part of the transition to Vulkan/Metal/etc. See the XPLMInstance API for
     future-proof drawing of 3-D objects.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMRegisterDrawCallback(
                                         inCallback          : XPLMDrawCallback_f;
                                         inPhase             : XPLMDrawingPhase;
                                         inWantsBefore       : Integer;
-                                        inRefcon            : pointer) : Integer;
+                                        inRefcon            : pointer) : Integer;    { Can be nil }
     cdecl; external XPLM_DLL;
 
    {
@@ -253,18 +269,19 @@ TYPE
     
     This routine unregisters a draw callback.  You must unregister a callback
     for each time you register a callback if you have registered it multiple
-    times with different refcons.  The routine returns 1 if it can find the
-    callback to unregister, 0 otherwise.
+    times with different refcons.  The routine returns true if it can find the
+    callback to unregister, false otherwise.
     
     Note that this function will likely be removed during the X-Plane 11 run as
     part of the transition to Vulkan/Metal/etc. See the XPLMInstance API for
     future-proof drawing of 3-D objects.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMUnregisterDrawCallback(
                                         inCallback          : XPLMDrawCallback_f;
                                         inPhase             : XPLMDrawingPhase;
                                         inWantsBefore       : Integer;
-                                        inRefcon            : pointer) : Integer;
+                                        inRefcon            : pointer) : Integer;    { Can be nil }
     cdecl; external XPLM_DLL;
 
 {$IFDEF XPLM400}
@@ -298,6 +315,30 @@ TYPE
    or creating a device.
 }
 
+
+{$IFDEF XPLMPG1}
+   {
+    XPLMWindowContentType
+    
+    XPLMWindowContentType describes how the content for a window (or an
+    avionics device's screen) is provided.
+   }
+TYPE
+   XPLMWindowContentType = (
+     { The window is drawn by calling back your plugin, which will draw using     }
+     { OpenGL and XPLM APIs. You provide mouse and keyboard hooks for interaction.}
+      xplm_WindowContentTypeOpenGL             = 0
+ 
+     { The window is drawn by calling back your plugin, which will draw using     }
+     { panel graphics APIs. You provide mouse and keyboard hooks for interaction. }
+     ,xplm_WindowContentTypePanelGraphics      = 1
+ 
+     { The window content is specified using a web page.                          }
+     ,xplm_WindowContentTypeBrowser            = 2
+ 
+   );
+   PXPLMWindowContentType = ^XPLMWindowContentType;
+{$ENDIF XPLMPG1}
 
    {
     XPLMDeviceID
@@ -381,8 +422,8 @@ TYPE
     This is the prototype for drawing callbacks for customized built-in device.
     You are passed in the device you are enhancing/replacing, and (if this is
     used for a built-in device that you are customizing) whether it is before
-    or after X-Plane drawing. If you are before X-Plane, return 1 to let
-    X-Plane draw or 0 to suppress X-Plane drawing. If you are called after
+    or after X-Plane drawing. If you are before X-Plane, return true to let
+    X-Plane draw or false to suppress X-Plane drawing. If you are called after
     X-Plane, the return value is ignored.
     
     Refcon is a unique value that you specify when registering the callback,
@@ -395,7 +436,7 @@ TYPE
      XPLMAvionicsCallback_f = FUNCTION(
                                     inDeviceID          : XPLMDeviceID;
                                     inIsBefore          : Integer;
-                                    inRefcon            : pointer) : Integer; cdecl;
+                                    inRefcon            : pointer) : Integer; cdecl;    { Can be nil }
 
 {$IFDEF XPLM410}
    {
@@ -404,15 +445,15 @@ TYPE
     Mouse click callback for clicks into your screen or (2D-popup) bezel,
     useful if the device you are making simulates a touch-screen the user can
     click in the 3d cockpit, or if your pop-up's bezel has buttons that the
-    user can click. Return 1 to consume the event, or 0 to let X-Plane process
-    it (for stock avionics devices).
+    user can click. Return true to consume the event, or false to let X-Plane
+    process it (for stock avionics devices).
    }
 TYPE
      XPLMAvionicsMouse_f = FUNCTION(
                                     x                   : Integer;
                                     y                   : Integer;
                                     inMouse             : XPLMMouseStatus;
-                                    inRefcon            : pointer) : Integer; cdecl;
+                                    inRefcon            : pointer) : Integer; cdecl;    { Can be nil }
 {$ENDIF XPLM410}
 
 {$IFDEF XPLM410}
@@ -421,18 +462,18 @@ TYPE
     
     Mouse wheel callback for scroll actions into your screen or (2D-popup)
     bezel, useful if your bezel has knobs that can be turned using the mouse
-    wheel, or if you want to simulate pinch-to-zoom on a touchscreen. Return 1
-    to consume the event, or 0 to let X-Plane process it (for stock avionics
-    devices). The number of "clicks" indicates how far the wheel was turned
-    since the last callback. The wheel is 0 for the vertical axis or 1 for the
-    horizontal axis (for OS/mouse combinations that support this).
+    wheel, or if you want to simulate pinch-to-zoom on a touchscreen. Return
+    true to consume the event, or false to let X-Plane process it (for stock
+    avionics devices). The number of "clicks" indicates how far the wheel was
+    turned since the last callback. The wheel is 0 for the vertical axis or 1
+    for the horizontal axis (for OS/mouse combinations that support this).
    }
      XPLMAvionicsMouseWheel_f = FUNCTION(
                                     x                   : Integer;
                                     y                   : Integer;
                                     wheel               : Integer;
                                     clicks              : Integer;
-                                    inRefcon            : pointer) : Integer; cdecl;
+                                    inRefcon            : pointer) : Integer; cdecl;    { Can be nil }
 {$ENDIF XPLM410}
 
 {$IFDEF XPLM410}
@@ -447,7 +488,7 @@ TYPE
      XPLMAvionicsCursor_f = FUNCTION(
                                     x                   : Integer;
                                     y                   : Integer;
-                                    inRefcon            : pointer) : XPLMCursorStatus; cdecl;
+                                    inRefcon            : pointer) : XPLMCursorStatus; cdecl;    { Can be nil }
 {$ENDIF XPLM410}
 
 {$IFDEF XPLM410}
@@ -455,14 +496,14 @@ TYPE
     XPLMAvionicsKeyboard_f
     
     Key callback called when your device is popped up and you've requested to
-    capture the keyboard.  Return 1 to consume the event, or 0 to let X-Plane
-    process it (for stock avionics devices).
+    capture the keyboard.  Return true to consume the event, or false to let
+    X-Plane process it (for stock avionics devices).
    }
      XPLMAvionicsKeyboard_f = FUNCTION(
                                     inKey               : XPLMChar;
                                     inFlags             : XPLMKeyFlags;
                                     inVirtualKey        : XPLMChar;
-                                    inRefCon            : pointer;
+                                    inRefcon            : pointer;    { Can be nil }
                                     losingFocus         : Integer) : Integer; cdecl;
 {$ENDIF XPLM410}
 
@@ -545,6 +586,13 @@ TYPE
      { A reference which will be passed into each of your draw callbacks. Use this}
      { to pass information to yourself as needed.                                 }
      refcon                   : pointer;
+{$IFDEF XPLMPG1}
+     { How this device's screen is drawn: xplm_WindowContentTypeOpenGL (the legacy}
+     { OpenGL bridge) or xplm_WindowContentTypePanelGraphics (native              }
+     { panel-graphics rendering). xplm_WindowContentTypeBrowser is not valid for  }
+     { avionics.                                                                  }
+     contentType              : XPLMWindowContentType;
+{$ENDIF XPLMPG1}
    END;
    PXPLMCustomizeAvionics_t = ^XPLMCustomizeAvionics_t;
 
@@ -562,6 +610,7 @@ TYPE
     built-in one (for example a device that you have created, or a device
     another plugin has created).
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMRegisterAvionicsCallbacksEx(
                                         inParams            : PXPLMCustomizeAvionics_t) : XPLMAvionicsID;
     cdecl; external XPLM_DLL;
@@ -576,6 +625,7 @@ TYPE
     programmatically. This is equivalent to calling
     XPLMRegisterAvionicsCallbackEx() with NULL for all callbacks.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetAvionicsHandle(
                                         inDeviceID          : XPLMDeviceID) : XPLMAvionicsID;
     cdecl; external XPLM_DLL;
@@ -587,6 +637,7 @@ TYPE
     only call this for handles you acquired from
     XPLMRegisterAvionicsCallbacksEx(). They will no longer be called.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMUnregisterAvionicsCallbacks(
                                         inAvionicsId        : XPLMAvionicsID);
     cdecl; external XPLM_DLL;
@@ -607,7 +658,7 @@ TYPE
    }
 TYPE
      XPLMAvionicsScreenCallback_f = PROCEDURE(
-                                    inRefcon            : pointer); cdecl;
+                                    inRefcon            : pointer); cdecl;    { Can be nil }
 {$ENDIF XPLM410}
 
 {$IFDEF XPLM410}
@@ -629,7 +680,7 @@ TYPE
                                     inAmbiantR          : Single;
                                     inAmbiantG          : Single;
                                     inAmbiantB          : Single;
-                                    inRefcon            : pointer); cdecl;
+                                    inRefcon            : pointer); cdecl;    { Can be nil }
 {$ENDIF XPLM410}
 
 {$IFDEF XPLM410}
@@ -661,7 +712,7 @@ TYPE
                                     inRheoValue         : Single;
                                     inAmbiantBrightness : Single;
                                     inBusVoltsRatio     : Single;
-                                    inRefcon            : pointer) : Single; cdecl;
+                                    inRefcon            : pointer) : Single; cdecl;    { Can be nil }
 {$ENDIF XPLM410}
 
 {$IFDEF XPLM410}
@@ -744,6 +795,19 @@ TYPE
      { A reference which will be passed into your draw and mouse callbacks. Use   }
      { this to pass information to yourself as needed.                            }
      refcon                   : pointer;
+{$IFDEF XPLMPG1}
+     { How this device's screen is drawn: xplm_WindowContentTypeOpenGL (the legacy}
+     { OpenGL bridge) or xplm_WindowContentTypePanelGraphics (native              }
+     { panel-graphics rendering). xplm_WindowContentTypeBrowser is not valid for  }
+     { avionics.                                                                  }
+     contentType              : XPLMWindowContentType;
+{$ENDIF XPLMPG1}
+{$IFDEF XPLMPG1}
+     { If set to true (1), X-Plane will draw the chrome with the close and pop-out}
+     { buttons outside of your bezel, rather than having the buttons steal pixels }
+     { from your bezel.                                                           }
+     windowWithChrome         : Integer;
+{$ENDIF XPLMPG1}
    END;
    PXPLMCreateAvionics_t = ^XPLMCreateAvionics_t;
 {$ENDIF XPLM410}
@@ -761,6 +825,7 @@ TYPE
                 plugin is unloaded, you should destroy the device using
                 XPLMDestroyAvionics().
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMCreateAvionicsEx(
                                         inParams            : PXPLMCreateAvionics_t) : XPLMAvionicsID;
     cdecl; external XPLM_DLL;
@@ -774,6 +839,7 @@ TYPE
     only ever call this for devices that you created using
     XPLMCreateAvionicsEx(), not X-Plane' built-ine devices you have customised.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMDestroyAvionics(
                                         inHandle            : XPLMAvionicsID);
     cdecl; external XPLM_DLL;
@@ -786,6 +852,7 @@ TYPE
     Returns true (1) if the cockpit device with the given handle is used by the
     current aircraft.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMIsAvionicsBound(
                                         inHandle            : XPLMAvionicsID) : Integer;
     cdecl; external XPLM_DLL;
@@ -808,6 +875,7 @@ TYPE
     screen brightness rheostat, allowing you to control the brightness even
     though it isn't connected to the `instrument_brightness_ratio` dataref.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetAvionicsBrightnessRheo(
                                         inHandle            : XPLMAvionicsID;
                                         brightness          : Single);
@@ -830,6 +898,7 @@ TYPE
             If the device is not currently bound, this returns the device's own
             brightness rheostat value.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetAvionicsBrightnessRheo(
                                         inHandle            : XPLMAvionicsID) : Single;
     cdecl; external XPLM_DLL;
@@ -843,6 +912,7 @@ TYPE
     of the electrical bus to which the given avionics device is bound, or -1 if
     the device is not bound to the current aircraft.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetAvionicsBusVoltsRatio(
                                         inHandle            : XPLMAvionicsID) : Single;
     cdecl; external XPLM_DLL;
@@ -857,6 +927,7 @@ TYPE
     arguments are filled with the co-ordinates of the mouse cursor in device
     co-ordinates.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMIsCursorOverAvionics(
                                         inHandle            : XPLMAvionicsID;
                                         outX                : PInteger;    { Can be nil }
@@ -873,6 +944,7 @@ TYPE
     drawing callback before drawing the next simulator frame. If your device is
     already drawn every frame, this has no effect.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMAvionicsNeedsDrawing(
                                         inHandle            : XPLMAvionicsID);
     cdecl; external XPLM_DLL;
@@ -883,7 +955,13 @@ TYPE
     XPLMSetAvionicsPopupVisible
     
     Shows or hides the popup window for a cockpit device.
+    
+    Visibility is independent of where the popup is drawn (in the X-Plane
+    window, popped out as an OS window, or mapped to a VR floating window): the
+    popup always remains in whichever target mode you most recently selected,
+    and toggling visibility just shows or hides it there.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetAvionicsPopupVisible(
                                         inHandle            : XPLMAvionicsID;
                                         inVisible           : Integer);
@@ -896,6 +974,7 @@ TYPE
     
     Returns true (1) if the popup window for a cockpit device is visible.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMIsAvionicsPopupVisible(
                                         inHandle            : XPLMAvionicsID) : Integer;
     cdecl; external XPLM_DLL;
@@ -905,8 +984,14 @@ TYPE
    {
     XPLMPopOutAvionics
     
-    Pops out the window for a cockpit device.
+    Pops out the window for a cockpit device, making it a first-class window in
+    the operating system, separate from the X-Plane window.
+    
+    Popping out and being mapped to VR are mutually exclusive: if the device is
+    currently mapped to VR (XPLMIsAvionicsMappedToVR() is true), calling this
+    routine clears its VR mapping before popping out.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMPopOutAvionics(
                                         inHandle            : XPLMAvionicsID);
     cdecl; external XPLM_DLL;
@@ -916,12 +1001,68 @@ TYPE
    {
     XPLMIsAvionicsPoppedOut
     
-    Returns true (1) if the popup window for a cockpit device is popped out.
+    Returns true (1) if the popup window for a cockpit device is popped out as
+    a first-class OS window.
+    
+    This is true if and only if you have most recently asked the popup to be
+    popped out (via XPLMPopOutAvionics()) and it has not since been mapped to
+    VR (via XPLMSetAvionicsMappedToVR()).
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMIsAvionicsPoppedOut(
                                         inHandle            : XPLMAvionicsID) : Integer;
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM410}
+
+{$IFDEF XPLM440}
+   {
+    XPLMSetAvionicsMappedToVR
+    
+    Maps a custom cockpit device's popup window to a VR floating window in the
+    headset, or returns it from VR back to the X-Plane window. Pass 1 to map to
+    VR, 0 to unmap.
+    
+    The VR window shows the device's bezel and screen at their intrinsic size,
+    as supplied via XPLMCreateAvionicsEx(). Avionics in VR are not
+    user-resizable.
+    
+    Mapping to VR and being popped out as an OS window are mutually exclusive:
+    calling this with inMapped=1 on a popped-out device clears its pop-out
+    state, and calling XPLMPopOutAvionics() on a VR-mapped device clears its VR
+    mapping. This mirrors the relationship between xplm_WindowPopOut and
+    xplm_WindowVR for XPLMWindow.
+    
+    VR mapping is independent of popup visibility
+    (XPLMSetAvionicsPopupVisible). Mapping a hidden popup to VR leaves it
+    hidden until you make it visible.
+    
+    Has no effect (and logs a warning) if VR is not currently running on the
+    headset, or if the device was not created via XPLMCreateAvionicsEx()
+    (built-in avionics cannot be VR-mapped).
+   }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
+   PROCEDURE XPLMSetAvionicsMappedToVR(
+                                        inHandle            : XPLMAvionicsID;
+                                        inMapped            : Integer);
+    cdecl; external XPLM_DLL;
+{$ENDIF XPLM440}
+
+{$IFDEF XPLM440}
+   {
+    XPLMIsAvionicsMappedToVR
+    
+    Returns true (1) if the popup window for a cockpit device is currently
+    mapped to a VR floating window.
+    
+    This is true if and only if you have most recently asked the device to be
+    mapped to VR (via XPLMSetAvionicsMappedToVR()) and it has not since been
+    unmapped, popped out, or had VR shut down beneath it.
+   }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
+   FUNCTION XPLMIsAvionicsMappedToVR(
+                                        inHandle            : XPLMAvionicsID) : Integer;
+    cdecl; external XPLM_DLL;
+{$ENDIF XPLM440}
 
 {$IFDEF XPLM410}
    {
@@ -930,6 +1071,7 @@ TYPE
     This routine gives keyboard focus to the popup window of a custom cockpit
     device, if it is visible.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMTakeAvionicsKeyboardFocus(
                                         inHandle            : XPLMAvionicsID);
     cdecl; external XPLM_DLL;
@@ -942,6 +1084,7 @@ TYPE
     Returns true (1) if the popup window for a cockpit device has keyboard
     focus.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMHasAvionicsKeyboardFocus(
                                         inHandle            : XPLMAvionicsID) : Integer;
     cdecl; external XPLM_DLL;
@@ -954,6 +1097,7 @@ TYPE
     Returns the bounds of a cockpit device's popup window in the X-Plane
     coordinate system.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetAvionicsGeometry(
                                         inHandle            : XPLMAvionicsID;
                                         outLeft             : PInteger;    { Can be nil }
@@ -970,6 +1114,7 @@ TYPE
     Sets the size and position of a cockpit device's popup window in the
     X-Plane coordinate system.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetAvionicsGeometry(
                                         inHandle            : XPLMAvionicsID;
                                         inLeft              : Integer;
@@ -985,6 +1130,7 @@ TYPE
     
     Returns the bounds of a cockpit device's popped-out window.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetAvionicsGeometryOS(
                                         inHandle            : XPLMAvionicsID;
                                         outLeft             : PInteger;    { Can be nil }
@@ -1000,6 +1146,7 @@ TYPE
     
     Sets the size and position of a cockpit device's popped-out window.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetAvionicsGeometryOS(
                                         inHandle            : XPLMAvionicsID;
                                         inLeft              : Integer;
@@ -1076,7 +1223,7 @@ TYPE
    }
      XPLMDrawWindow_f = PROCEDURE(
                                     inWindowID          : XPLMWindowID;
-                                    inRefcon            : pointer); cdecl;
+                                    inRefcon            : pointer); cdecl;    { Can be nil }
 
    {
     XPLMHandleKey_f
@@ -1104,7 +1251,7 @@ TYPE
                                     inKey               : XPLMChar;
                                     inFlags             : XPLMKeyFlags;
                                     inVirtualKey        : XPLMChar;
-                                    inRefcon            : pointer;
+                                    inRefcon            : pointer;    { Can be nil }
                                     losingFocus         : Integer); cdecl;
 
    {
@@ -1136,7 +1283,7 @@ TYPE
                                     x                   : Integer;
                                     y                   : Integer;
                                     inMouse             : XPLMMouseStatus;
-                                    inRefcon            : pointer) : Integer; cdecl;
+                                    inRefcon            : pointer) : Integer; cdecl;    { Can be nil }
 
 {$IFDEF XPLM200}
    {
@@ -1173,7 +1320,7 @@ TYPE
                                     inWindowID          : XPLMWindowID;
                                     x                   : Integer;
                                     y                   : Integer;
-                                    inRefcon            : pointer) : XPLMCursorStatus; cdecl;
+                                    inRefcon            : pointer) : XPLMCursorStatus; cdecl;    { Can be nil }
 {$ENDIF XPLM200}
 
 {$IFDEF XPLM200}
@@ -1181,12 +1328,12 @@ TYPE
     XPLMHandleMouseWheel_f
     
     The SDK calls your mouse wheel callback when one of the mouse wheels is
-    scrolled within your window.  Return 1 to consume the mouse wheel movement
-    or 0 to pass them on to a lower window.  (If your window appears opaque to
-    the user, you should consume mouse wheel scrolling even if it does
-    nothing.)  The number of "clicks" indicates how far the wheel was turned
-    since the last callback. The wheel is 0 for the vertical axis or 1 for the
-    horizontal axis (for OS/mouse combinations that support this).
+    scrolled within your window.  Return true to consume the mouse wheel
+    movement or false to pass them on to a lower window.  (If your window
+    appears opaque to the user, you should consume mouse wheel scrolling even
+    if it does nothing.)  The number of "clicks" indicates how far the wheel
+    was turned since the last callback. The wheel is 0 for the vertical axis or
+    1 for the horizontal axis (for OS/mouse combinations that support this).
     
     The units for x and y values match the units used in your window. Thus, for
     "modern" windows (those created via XPLMCreateWindowEx() and compiled
@@ -1202,8 +1349,21 @@ TYPE
                                     y                   : Integer;
                                     wheel               : Integer;
                                     clicks              : Integer;
-                                    inRefcon            : pointer) : Integer; cdecl;
+                                    inRefcon            : pointer) : Integer; cdecl;    { Can be nil }
 {$ENDIF XPLM200}
+
+{$IFDEF XPLMPG1}
+   {
+    XPLMBrowserNavigation_f
+   }
+TYPE
+     XPLMBrowserNavigation_f = PROCEDURE(
+                                    inWindow            : XPLMWindowID;
+                                    inURL               : XPLMString;
+                                    inSuccess           : Integer;
+                                    inError             : XPLMString;    { Can be nil }
+                                    inRefcon            : pointer); cdecl;    { Can be nil }
+{$ENDIF XPLMPG1}
 
 {$IFDEF XPLM300}
    {
@@ -1327,12 +1487,18 @@ TYPE
      { Bottom bound, in global desktop boxels                                     }
      bottom                   : Integer;
      visible                  : Integer;
+     { A callback to draw your window's contents (or NULL, e.g. for               }
+     { browser/panel-graphics content where the window draws itself)              }
      drawWindowFunc           : XPLMDrawWindow_f;
      { A callback to handle the user left-clicking within your window (or NULL to }
      { ignore left clicks)                                                        }
      handleMouseClickFunc     : XPLMHandleMouseClick_f;
+     { A callback to handle keyboard input (or NULL to ignore keyboard input)     }
      handleKeyFunc            : XPLMHandleKey_f;
+     { A callback to determine the cursor shape over your window (or NULL for the }
+     { default cursor)                                                            }
      handleCursorFunc         : XPLMHandleCursor_f;
+     { A callback to handle scroll-wheel events (or NULL to ignore them)          }
      handleMouseWheelFunc     : XPLMHandleMouseWheel_f;
      { A reference which will be passed into each of your window callbacks. Use   }
      { this to pass information to yourself as needed.                            }
@@ -1350,6 +1516,13 @@ TYPE
      { ignore right clicks)                                                       }
      handleRightClickFunc     : XPLMHandleMouseClick_f;
 {$ENDIF XPLM300}
+{$IFDEF XPLMPG1}
+     { The source of content for this Window (OpenGL, Panel Graphics, CEF, etc.)  }
+     windowContentType        : XPLMWindowContentType;
+{$ENDIF XPLMPG1}
+{$IFDEF XPLMPG1}
+     browserNavigationFunc    : XPLMBrowserNavigation_f;
+{$ENDIF XPLMPG1}
    END;
    PXPLMCreateWindow_t = ^XPLMCreateWindow_t;
 {$ENDIF XPLM200}
@@ -1364,7 +1537,13 @@ TYPE
     used.  Also, you must provide functions for every callback---you may not
     leave them null!  (If you do not support the cursor or mouse wheel, use
     functions that return the default values.)
+    
+    NOTE: Lua scripts must use XLuaCreateImguiWindow() or
+    XLuaCreateBrowserWindow() instead of XPLMCreateWindowEx -- those wrappers
+    pre-wire the correct content type and input handlers for their respective
+    window flavours.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMCreateWindowEx(
                                         inParams            : PXPLMCreateWindow_t) : XPLMWindowID;
     cdecl; external XPLM_DLL;
@@ -1391,6 +1570,7 @@ TYPE
     the background and frame of the window.  Higher level libraries have
     routines which make this easy.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMCreateWindow(
                                         inLeft              : Integer;
                                         inTop               : Integer;
@@ -1400,7 +1580,7 @@ TYPE
                                         inDrawCallback      : XPLMDrawWindow_f;
                                         inKeyCallback       : XPLMHandleKey_f;
                                         inMouseCallback     : XPLMHandleMouseClick_f;
-                                        inRefcon            : pointer) : XPLMWindowID;
+                                        inRefcon            : pointer) : XPLMWindowID;    { Can be nil }
     cdecl; external XPLM_DLL;
 
    {
@@ -1409,10 +1589,100 @@ TYPE
     This routine destroys a window.  The window's callbacks are not called
     after this call. Keyboard focus is removed from the window before
     destroying it.
+    
+    NOTE: Lua scripts must use XLuaDestroyImguiWindow() or
+    XLuaDestroyBrowserWindow() instead of XPLMDestroyWindow.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMDestroyWindow(
                                         inWindowID          : XPLMWindowID);
     cdecl; external XPLM_DLL;
+
+
+
+
+
+{$IFDEF XPLMPG1}
+   {
+    XPLMWindowSetURL
+    
+    Loads a URL into a browser-content-type window. Safe to call before the
+    underlying webview has finished initialising; the load is queued and
+    applied as soon as the browser is ready, so plugins may call this
+    immediately after `XPLMCreateWindowEx`. Subsequent calls replace the
+    pending or current page.
+   }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
+   PROCEDURE XPLMWindowSetURL(
+                                        inWindowID          : XPLMWindowID;
+                                        inURL               : XPLMString);
+    cdecl; external XPLM_DLL;
+{$ENDIF XPLMPG1}
+
+{$IFDEF XPLMPG1}
+   {
+    XPLMWindowRefresh
+    
+    Reloads the current URL in a browser-content-type window. Pass true for
+    `inIgnoreCache` to bypass the HTTP cache (the equivalent of a
+     shift-reload).
+   }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
+   PROCEDURE XPLMWindowRefresh(
+                                        inWindowID          : XPLMWindowID;
+                                        inIgnoreCache       : Integer);
+    cdecl; external XPLM_DLL;
+{$ENDIF XPLMPG1}
+
+{$IFDEF XPLMPG1}
+   {
+    XPLMWindowInjectScript
+    
+    Executes a JavaScript snippet in the browser window's main frame. The
+    script is run once; it has access to the same `xplane.*` namespace exposed
+    to the page itself (so it can call functions registered via
+    `XPLMWindowAddBrowserFunction`). If injected before the page has finished
+     loading, the script may run against an empty document.
+   }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
+   PROCEDURE XPLMWindowInjectScript(
+                                        inWindowID          : XPLMWindowID;
+                                        inScript            : XPLMString);
+    cdecl; external XPLM_DLL;
+{$ENDIF XPLMPG1}
+
+{$IFDEF XPLMPG1}
+   {
+    XPLMBrowserCallback_f
+   }
+TYPE
+     XPLMBrowserCallback_f = FUNCTION(
+                                    inWindowID          : XPLMWindowID;
+                                    inJSON              : XPLMString;
+                                    inRefcon            : pointer) : XPLMString; cdecl;    { Can be nil }
+{$ENDIF XPLMPG1}
+
+{$IFDEF XPLMPG1}
+   {
+    XPLMWindowAddBrowserFunction
+    
+    Registers a callback that the page running in this browser window can
+    invoke as `xplane.<inName>(arg)`. The JS call returns a Promise that
+    resolves to the value your `XPLMBrowserCallback_f` returns (parsed as JSON
+    -- see that callback's desc for the contract).
+    
+    Multiple registrations against the same name on the same window overwrite
+    each other. Each window has its own independent `xplane.*` namespace;
+    functions registered on window A are not callable from window B.
+   }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
+   PROCEDURE XPLMWindowAddBrowserFunction(
+                                        inWindowID          : XPLMWindowID;
+                                        inName              : XPLMString;
+                                        inFunction          : XPLMBrowserCallback_f;
+                                        inRefcon            : pointer);    { Can be nil }
+    cdecl; external XPLM_DLL;
+{$ENDIF XPLMPG1}
 
    {
     XPLMGetScreenSize
@@ -1421,6 +1691,7 @@ TYPE
     This number can be used to get a rough idea of the amount of detail the
     user will be able to see when drawing in 3-d.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetScreenSize(
                                         outWidth            : PInteger;    { Can be nil }
                                         outHeight           : PInteger);    { Can be nil }
@@ -1459,6 +1730,7 @@ TYPE
     windows, rather than "floating" within X-Plane) are not included in these
     bounds.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetScreenBoundsGlobal(
                                         outLeft             : PInteger;    { Can be nil }
                                         outTop              : PInteger;    { Can be nil }
@@ -1483,7 +1755,7 @@ TYPE
                                     inTopBx             : Integer;
                                     inRightBx           : Integer;
                                     inBottomBx          : Integer;
-                                    inRefcon            : pointer); cdecl;
+                                    inRefcon            : pointer); cdecl;    { Can be nil }
 {$ENDIF XPLM300}
 
 {$IFDEF XPLM300}
@@ -1510,9 +1782,10 @@ TYPE
     and one X-Plane boxel may be larger than one pixel due to 150% or 200%
     scaling).
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetAllMonitorBoundsGlobal(
                                         inMonitorBoundsCallback: XPLMReceiveMonitorBoundsGlobal_f;
-                                        inRefcon            : pointer);
+                                        inRefcon            : pointer);    { Can be nil }
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM300}
 
@@ -1533,7 +1806,7 @@ TYPE
                                     inTopPx             : Integer;
                                     inRightPx           : Integer;
                                     inBottomPx          : Integer;
-                                    inRefcon            : pointer); cdecl;
+                                    inRefcon            : pointer); cdecl;    { Can be nil }
 {$ENDIF XPLM300}
 
 {$IFDEF XPLM300}
@@ -1550,9 +1823,10 @@ TYPE
     the X-Plane global desktop may not match the operating system's global
     desktop, and one X-Plane boxel may be larger than one pixel).
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetAllMonitorBoundsOS(
                                         inMonitorBoundsCallback: XPLMReceiveMonitorBoundsOS_f;
-                                        inRefcon            : pointer);
+                                        inRefcon            : pointer);    { Can be nil }
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM300}
 
@@ -1575,6 +1849,7 @@ TYPE
     the user's main monitor (for instance, to a pop out window or a secondary
     monitor), this function will not reflect it.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetMouseLocation(
                                         outX                : PInteger;    { Can be nil }
                                         outY                : PInteger);    { Can be nil }
@@ -1597,6 +1872,7 @@ TYPE
     
     Pass NULL to not receive info about either parameter.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetMouseLocationGlobal(
                                         outX                : PInteger;    { Can be nil }
                                         outY                : PInteger);    { Can be nil }
@@ -1620,6 +1896,7 @@ TYPE
     
     Pass NULL to not receive any paramter.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetWindowGeometry(
                                         inWindowID          : XPLMWindowID;
                                         outLeft             : PInteger;    { Can be nil }
@@ -1643,6 +1920,7 @@ TYPE
     position of windows whose positioning mode is xplm_WindowPopOut, you'll
     need to instead use XPLMSetWindowGeometryOS().
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetWindowGeometry(
                                         inWindowID          : XPLMWindowID;
                                         inLeft              : Integer;
@@ -1659,6 +1937,7 @@ TYPE
     a window whose positioning mode is xplm_WindowPopOut), in operating system
     pixels.  Pass NULL to not receive any parameter.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetWindowGeometryOS(
                                         inWindowID          : XPLMWindowID;
                                         outLeft             : PInteger;    { Can be nil }
@@ -1681,6 +1960,7 @@ TYPE
     out (using XPLMWindowIsPoppedOut()) and that a monitor really exists at the
     OS coordinates you provide (using XPLMGetAllMonitorBoundsOS()).
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetWindowGeometryOS(
                                         inWindowID          : XPLMWindowID;
                                         inLeft              : Integer;
@@ -1698,6 +1978,7 @@ TYPE
     are responsible for ensuring your window is in VR (using
     XPLMWindowIsInVR()).
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetWindowGeometryVR(
                                         inWindowID          : XPLMWindowID;
                                         outWidthBoxels      : PInteger;    { Can be nil }
@@ -1715,6 +1996,7 @@ TYPE
     Note that you are responsible for ensuring your window is in VR (using
     XPLMWindowIsInVR()).
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetWindowGeometryVR(
                                         inWindowID          : XPLMWindowID;
                                         widthBoxels         : Integer;
@@ -1727,6 +2009,7 @@ TYPE
     
     Returns true (1) if the specified window is visible.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetWindowIsVisible(
                                         inWindowID          : XPLMWindowID) : Integer;
     cdecl; external XPLM_DLL;
@@ -1736,6 +2019,7 @@ TYPE
     
     This routine shows or hides a window.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetWindowIsVisible(
                                         inWindowID          : XPLMWindowID;
                                         inIsVisible         : Integer);
@@ -1753,6 +2037,7 @@ TYPE
     XPLMCreateWindow(), or windows compiled against a pre-XPLM300 version of
     the SDK cannot be popped out.)
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMWindowIsPoppedOut(
                                         inWindowID          : XPLMWindowID) : Integer;
     cdecl; external XPLM_DLL;
@@ -1770,6 +2055,7 @@ TYPE
     XPLMCreateWindow(), or windows compiled against a pre-XPLM301 version of
     the SDK cannot be moved to VR.)
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMWindowIsInVR(
                                         inWindowID          : XPLMWindowID) : Integer;
     cdecl; external XPLM_DLL;
@@ -1798,6 +2084,7 @@ TYPE
     XPLMCreateWindow(), or windows compiled against a pre-XPLM300 version of
     the SDK will simply get the default gravity.)
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetWindowGravity(
                                         inWindowID          : XPLMWindowID;
                                         inLeftGravity       : Single;
@@ -1820,6 +2107,7 @@ TYPE
     XPLMCreateWindow(), or windows compiled against a pre-XPLM300 version of
     the SDK will have no minimum or maximum size.)
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetWindowResizingLimits(
                                         inWindowID          : XPLMWindowID;
                                         inMinWidthBoxels    : Integer;
@@ -1891,6 +2179,7 @@ TYPE
     XPLMCreateWindow(), or windows compiled against a pre-XPLM300 version of
     the SDK will always use xplm_WindowPositionFree.)
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetWindowPositioningMode(
                                         inWindowID          : XPLMWindowID;
                                         inPositioningMode   : XPLMWindowPositioningMode;
@@ -1907,6 +2196,7 @@ TYPE
     xplm_WindowDecorationRoundRectangle) when they were created using
     XPLMCreateWindowEx().
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetWindowTitle(
                                         inWindowID          : XPLMWindowID;
                                         inWindowTitle       : XPLMString);
@@ -1919,6 +2209,7 @@ TYPE
     Returns a window's reference constant, the unique value you can use for
     your own purposes.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetWindowRefCon(
                                         inWindowID          : XPLMWindowID) : pointer;
     cdecl; external XPLM_DLL;
@@ -1929,9 +2220,10 @@ TYPE
     Sets a window's reference constant.  Use this to pass data to yourself in
     the callbacks.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetWindowRefCon(
                                         inWindowID          : XPLMWindowID;
-                                        inRefcon            : pointer);
+                                        inRefcon            : pointer);    { Can be nil }
     cdecl; external XPLM_DLL;
 
    {
@@ -1942,6 +2234,7 @@ TYPE
     any plugin-created windows and instead pass keyboard strokes directly to
     X-Plane.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMTakeKeyboardFocus(
                                         inWindow            : XPLMWindowID);
     cdecl; external XPLM_DLL;
@@ -1953,6 +2246,7 @@ TYPE
     ID of 0 to see if no plugin window has focus, and all keystrokes will go
     directly to X-Plane.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMHasKeyboardFocus(
                                         inWindow            : XPLMWindowID) : Integer;
     cdecl; external XPLM_DLL;
@@ -1973,6 +2267,7 @@ TYPE
     ordered, and no window in a lower layer can ever be above any window in a
     higher one.)
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMBringWindowToFront(
                                         inWindow            : XPLMWindowID);
     cdecl; external XPLM_DLL;
@@ -1995,6 +2290,7 @@ TYPE
     have two different plugin-created windows (one legacy, one modern) *both*
     be in the front (of their different layers!) at the same time.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMIsWindowInFront(
                                         inWindow            : XPLMWindowID) : Integer;
     cdecl; external XPLM_DLL;
@@ -2021,8 +2317,8 @@ TYPE
     interaction.  For example, the MUI library uses a key sniffer to do pop-up
     text entry.
     
-    Return 1 to pass the key on to the next sniffer, the window manager,
-    X-Plane, or whomever is down stream.  Return 0 to consume the key.
+    Return true to pass the key on to the next sniffer, the window manager,
+    X-Plane, or whomever is down stream.  Return false to consume the key.
     
     Warning: this API declares virtual keys as a signed character; however the
     VKEY #define macros in XPLMDefs.h define the vkeys using unsigned values
@@ -2034,7 +2330,7 @@ TYPE
                                     inChar              : XPLMChar;
                                     inFlags             : XPLMKeyFlags;
                                     inVirtualKey        : XPLMChar;
-                                    inRefcon            : pointer) : Integer; cdecl;
+                                    inRefcon            : pointer) : Integer; cdecl;    { Can be nil }
 
    {
     XPLMRegisterKeySniffer
@@ -2044,26 +2340,28 @@ TYPE
     system does not consume.  You should ALMOST ALWAYS sniff non-control keys
     after the window system.  When the window system consumes a key, it is
     because the user has "focused" a window.  Consuming the key or taking
-    action based on the key will produce very weird results.  Returns
-    1 if successful.
+    action based on the key will produce very weird results.  Returns true if
+    successful.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMRegisterKeySniffer(
                                         inCallback          : XPLMKeySniffer_f;
                                         inBeforeWindows     : Integer;
-                                        inRefcon            : pointer) : Integer;
+                                        inRefcon            : pointer) : Integer;    { Can be nil }
     cdecl; external XPLM_DLL;
 
    {
     XPLMUnregisterKeySniffer
     
     This routine unregisters a key sniffer.  You must unregister a key sniffer
-    for every time you register one with the exact same signature.  Returns 1
-    if successful.
+    for every time you register one with the exact same signature.  Returns
+    true if successful.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMUnregisterKeySniffer(
                                         inCallback          : XPLMKeySniffer_f;
                                         inBeforeWindows     : Integer;
-                                        inRefcon            : pointer) : Integer;
+                                        inRefcon            : pointer) : Integer;    { Can be nil }
     cdecl; external XPLM_DLL;
 
 {___________________________________________________________________________
@@ -2083,7 +2381,7 @@ TYPE
    }
 TYPE
      XPLMHotKey_f = PROCEDURE(
-                                    inRefcon            : pointer); cdecl;
+                                    inRefcon            : pointer); cdecl;    { Can be nil }
 
    {
     XPLMHotKeyID
@@ -2103,12 +2401,13 @@ TYPE
     returned.  During execution, the actual key associated with your hot key
     may change, but you are insulated from this.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMRegisterHotKey(
                                         inVirtualKey        : XPLMChar;
                                         inFlags             : XPLMKeyFlags;
                                         inDescription       : XPLMString;
                                         inCallback          : XPLMHotKey_f;
-                                        inRefcon            : pointer) : XPLMHotKeyID;
+                                        inRefcon            : pointer) : XPLMHotKeyID;    { Can be nil }
     cdecl; external XPLM_DLL;
 
    {
@@ -2116,6 +2415,7 @@ TYPE
     
     Unregisters a hot key.  You can only unregister your own hot keys.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMUnregisterHotKey(
                                         inHotKey            : XPLMHotKeyID);
     cdecl; external XPLM_DLL;
@@ -2125,6 +2425,7 @@ TYPE
     
     Returns the number of current hot keys.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMCountHotKeys: Integer;
     cdecl; external XPLM_DLL;
 
@@ -2133,6 +2434,7 @@ TYPE
     
     Returns a hot key by index, for iteration on all hot keys.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetNthHotKey(
                                         inIndex             : Integer) : XPLMHotKeyID;
     cdecl; external XPLM_DLL;
@@ -2143,6 +2445,7 @@ TYPE
     Returns information about the hot key.  Return NULL for any parameter you
     don't want info about.  The description should be at least 512 chars long.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetHotKeyInfo(
                                         inHotKey            : XPLMHotKeyID;
                                         outVirtualKey       : XPLMString;    { Can be nil }
@@ -2156,11 +2459,72 @@ TYPE
     
     Remaps a hot key's keystrokes.  You may remap another plugin's keystrokes.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetHotKeyCombination(
                                         inHotKey            : XPLMHotKeyID;
                                         inVirtualKey        : XPLMChar;
                                         inFlags             : XPLMKeyFlags);
     cdecl; external XPLM_DLL;
+
+{___________________________________________________________________________
+ * Host API
+ ___________________________________________________________________________}
+
+CONST
+   XPLMDisplayHostApiVersion = 0;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 IMPLEMENTATION

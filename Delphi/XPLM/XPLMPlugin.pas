@@ -1,5 +1,5 @@
 {
-   Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
+   Copyright 2005-2026 Laminar Research, Sandy Barbour and Ben Supnik All
    rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
 }
 
@@ -11,8 +11,23 @@ INTERFACE
 }
 
 USES
-    XPLMDefs;
+    XPLMDefs, XPLMSound;
    {$A4}
+
+TYPE
+   XPLMChar   = AnsiChar;
+   XPLMString = PAnsiChar;
+
+CONST
+{$IFDEF MSWINDOWS}
+   XPLM_DLL = 'XPLM_64.dll';
+{$ENDIF}
+{$IFDEF DARWIN}
+   XPLM_DLL = 'XPLM.framework/XPLM';
+{$ENDIF}
+{$IFDEF LINUX}
+   XPLM_DLL = 'XPLM_64.so';
+{$ENDIF}
 {___________________________________________________________________________
  * FINDING PLUGINS
  ___________________________________________________________________________}
@@ -30,6 +45,7 @@ USES
     This routine returns the plugin ID of the calling plug-in.  Call this to
     get your own ID.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetMyID: XPLMPluginID;
     cdecl; external XPLM_DLL;
 
@@ -39,6 +55,7 @@ USES
     This routine returns the total number of plug-ins that are loaded, both
     disabled and enabled.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMCountPlugins: Integer;
     cdecl; external XPLM_DLL;
 
@@ -49,6 +66,7 @@ USES
     to XPLMCountPlugins-1, inclusive. Plugins may be returned in any arbitrary
     order.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetNthPlugin(
                                         inIndex             : Integer) : XPLMPluginID;
     cdecl; external XPLM_DLL;
@@ -60,6 +78,7 @@ USES
     passed in absolute file system path.  XPLM_NO_PLUGIN_ID is returned if the
     path does not point to a currently loaded plug-in.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMFindPluginByPath(
                                         inPath              : XPLMString) : XPLMPluginID;
     cdecl; external XPLM_DLL;
@@ -74,6 +93,7 @@ USES
     plug-in name, and should be unique for all plug-ins.  Use this routine to
     locate another plugin that your plugin interoperates with
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMFindPluginBySignature(
                                         inSignature         : XPLMString) : XPLMPluginID;
     cdecl; external XPLM_DLL;
@@ -90,6 +110,7 @@ USES
     unique string that identifies this plug-in. outDescription - a
     human-readable description of this plug-in.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetPluginInfo(
                                         inPlugin            : XPLMPluginID;
                                         outName             : XPLMString;    { Can be nil }
@@ -112,6 +133,7 @@ USES
     
     Returns whether the specified plug-in is enabled for running.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMIsPluginEnabled(
                                         inPluginID          : XPLMPluginID) : Integer;
     cdecl; external XPLM_DLL;
@@ -119,11 +141,12 @@ USES
    {
     XPLMEnablePlugin
     
-    This routine enables a plug-in if it is not already enabled. It returns 1
-    if the plugin was enabled or successfully enables itself, 0 if it does not.
-    Plugins may fail to enable (for example, if resources cannot be acquired)
-    by returning 0 from their XPluginEnable callback.
+    This routine enables a plug-in if it is not already enabled. It returns
+    true if the plugin was enabled or successfully enables itself, false if it
+    does not.  Plugins may fail to enable (for example, if resources cannot be
+    acquired) by returning false from their XPluginEnable callback.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMEnablePlugin(
                                         inPluginID          : XPLMPluginID) : Integer;
     cdecl; external XPLM_DLL;
@@ -133,6 +156,7 @@ USES
     
     This routine disables an enabled plug-in.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMDisablePlugin(
                                         inPluginID          : XPLMPluginID);
     cdecl; external XPLM_DLL;
@@ -146,8 +170,24 @@ USES
     will be unloaded, then the start process happens as if the sim was starting
     up.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMReloadPlugins;
     cdecl; external XPLM_DLL;
+
+{$IFDEF XPLM440}
+   {
+    XPLMReloadThisPlugin
+    
+    This routine reloads the plug-ins which calls it. If you pass true for
+    'forReplacement', a dialog will be shown after the .xpl has been unloaded
+    to allow you to replace it with a newer one manually. In other respects it
+    works identically to XPLMReloadPlugins().
+   }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
+   PROCEDURE XPLMReloadThisPlugin(
+                                        forReplacement      : Integer);
+    cdecl; external XPLM_DLL;
+{$ENDIF XPLM440}
 
 {___________________________________________________________________________
  * INTERPLUGIN MESSAGING
@@ -186,119 +226,19 @@ USES
 }
 
 
-CONST
-    { This message is sent to your plugin whenever the user's plane crashes. The }
-    { parameter is ignored.                                                      }
-   XPLM_MSG_PLANE_CRASHED = 101;
 
-    { This message is sent to your plugin whenever a new plane is loaded.  The   }
-    { parameter contains the index number of the plane being loaded; 0 indicates }
-    { the user's plane. The parameter is an integer bit-cast to a pointer.       }
-   XPLM_MSG_PLANE_LOADED = 102;
 
-    { This messages is sent whenever the user's plane is positioned at a new     }
-    { airport. The parameter is ignored.                                         }
-   XPLM_MSG_AIRPORT_LOADED = 103;
 
-    { This message is sent whenever new scenery is loaded.  Use datarefs to      }
-    { determine the new scenery files that were loaded. The parameter is ignored.}
-   XPLM_MSG_SCENERY_LOADED = 104;
 
-    { This message is sent whenever the user adjusts the number of X-Plane       }
-    { aircraft models.  You must use XPLMCountPlanes to find out how many planes }
-    { are now available.  This message will only be sent in XP7 and higher       }
-    { because in XP6 the number of aircraft is not user-adjustable. The parameter}
-    { is ignored.                                                                }
-   XPLM_MSG_AIRPLANE_COUNT_CHANGED = 105;
 
-{$IFDEF XPLM200}
-CONST
-    { This message is sent to your plugin whenever a plane is unloaded.  The     }
-    { parameter contains the index number of the plane being unloaded; 0         }
-    { indicates the user's plane.  The parameter is of type int, bit-cast to a   }
-    { pointer.                                                                   }
-   XPLM_MSG_PLANE_UNLOADED = 106;
-{$ENDIF XPLM200}
 
-{$IFDEF XPLM210}
-CONST
-    { This message is sent to your plugin right before X-Plane writes its        }
-    { preferences file.  You can use this for two purposes: to write your own    }
-    { preferences, and to modify any datarefs to influence preferences output.   }
-    { For example, if your plugin temporarily modifies saved preferences, you can}
-    { put them back to their default values here to avoid having the tweaks be   }
-    { persisted if your plugin is not loaded on the next invocation of X-Plane.  }
-    { The parameter is ignored.                                                  }
-   XPLM_MSG_WILL_WRITE_PREFS = 107;
-{$ENDIF XPLM210}
 
-{$IFDEF XPLM210}
-    { This message is sent to your plugin right after a livery is loaded for an  }
-    { airplane.  You can use this to check the new livery (via datarefs) and     }
-    { react accordingly.  The parameter contains the index number of the aircraft}
-    { whose livery is changing. The parameter is an integer, bit-cast to a       }
-    { pointer.                                                                   }
-   XPLM_MSG_LIVERY_LOADED = 108;
-{$ENDIF XPLM210}
 
-{$IFDEF XPLM301}
-CONST
-    { Sent to your plugin right before X-Plane enters virtual reality mode (at   }
-    { which time any windows that are not positioned in VR mode will no longer be}
-    { visible to the user). The parameter is unused and should be ignored.       }
-   XPLM_MSG_ENTERED_VR  = 109;
-{$ENDIF XPLM301}
 
-{$IFDEF XPLM301}
-    { Sent to your plugin right before X-Plane leaves virtual reality mode (at   }
-    { which time you may want to clean up windows that are positioned in VR      }
-    { mode). The parameter is unused and should be ignored.                      }
-   XPLM_MSG_EXITING_VR  = 110;
-{$ENDIF XPLM301}
 
-{$IFDEF XPLM303}
-CONST
-    { Sent to your plugin if another plugin wants to take over AI planes. If you }
-    { are a synthetic traffic provider,  that probably means a plugin for an     }
-    { online network has connected and wants to supply aircraft flown by real    }
-    { humans and you should cease to provide synthetic traffic. If however you   }
-    { are providing online traffic from real humans,  you probably don't want to }
-    { disconnect, in which case you just ignore this message. The sender is the  }
-    { plugin ID of the plugin asking for control of the planes now. You can use  }
-    { it to find out who is requesting and whether you should yield to them.     }
-    { Synthetic traffic providers should always yield to online networks. The    }
-    { parameter is unused and should be ignored. Do not send this message        }
-    { directly; always use the XPLMAcquirePlanes() call.                         }
-   XPLM_MSG_RELEASE_PLANES = 111;
-{$ENDIF XPLM303}
 
-{$IFDEF XPLM400}
-CONST
-    { Sent to your plugin after FMOD sound banks are loaded. The parameter is the}
-    { XPLMBankID enum in XPLMSound.h, 0 for the master bank and 1 for the radio  }
-    { bank. The bank ID is bit-cast to a pointer.                                }
-   XPLM_MSG_FMOD_BANK_LOADED = 112;
-{$ENDIF XPLM400}
 
-{$IFDEF XPLM400}
-    { Sent to your plugin before FMOD sound banks are unloaded. Any associated   }
-    { resources should be cleaned up at this point. The parameter is the         }
-    { XPLMBankID enum in XPLMSound.h, 0 for the master bank and 1 for the radio  }
-    { bank. The bank ID is bit-cast to a pointer.                                }
-   XPLM_MSG_FMOD_BANK_UNLOADING = 113;
-{$ENDIF XPLM400}
 
-{$IFDEF XPLM400}
-    { Sent to your plugin per-frame (at-most) when/if datarefs are added. It will}
-    { include the new data ref total count so that your plugin can keep a local  }
-    { cache of the total, see what's changed and know which ones to inquire about}
-    { if it cares.                                                               }
-    {                                                                            }
-    { This message is only sent to plugins that enable the                       }
-    { XPLM_WANTS_DATAREF_NOTIFICATIONS feature. The parameteter is a pointer to a}
-    { 32-bit integer containing the new number of datarefs.                      }
-   XPLM_MSG_DATAREFS_ADDED = 114;
-{$ENDIF XPLM400}
 
    {
     XPLMSendMessageToPlugin
@@ -307,6 +247,7 @@ CONST
     XPLM_NO_PLUGIN_ID to broadcast to all plug-ins.  Only enabled plug-ins with
     a message receive function receive the message.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSendMessageToPlugin(
                                         inPlugin            : XPLMPluginID;
                                         inMessage           : Integer;
@@ -396,7 +337,7 @@ CONST
 TYPE
      XPLMFeatureEnumerator_f = PROCEDURE(
                                     inFeature           : XPLMString;
-                                    inRef               : pointer); cdecl;
+                                    inRef               : pointer); cdecl;    { Can be nil }
 
    {
     XPLMHasFeature
@@ -404,6 +345,7 @@ TYPE
     This returns 1 if the given installation of X-Plane supports a feature, or
     0 if it does not.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMHasFeature(
                                         inFeature           : XPLMString) : Integer;
     cdecl; external XPLM_DLL;
@@ -415,6 +357,7 @@ TYPE
     it is not enabled.  It is an error to call this routine with an unsupported
     feature.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMIsFeatureEnabled(
                                         inFeature           : XPLMString) : Integer;
     cdecl; external XPLM_DLL;
@@ -426,6 +369,7 @@ TYPE
     change the running behavior of X-Plane and your plugin in some way,
     depending on the feature.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMEnableFeature(
                                         inFeature           : XPLMString;
                                         inEnable            : Integer);
@@ -438,12 +382,22 @@ TYPE
     running version of X-Plane supports. Use this routine to determine all of
     the features that X-Plane can support.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMEnumerateFeatures(
-                                        inEnumerator        : XPLMFeatureEnumerator_f;
-                                        inRef               : pointer);
+                                        inEnumerator        : XPLMFeatureEnumerator_f;    { Can be nil }
+                                        inRef               : pointer);    { Can be nil }
     cdecl; external XPLM_DLL;
 
 {$ENDIF XPLM200}
+{___________________________________________________________________________
+ * Host API
+ ___________________________________________________________________________}
+
+CONST
+   XPLMPluginHostApiVersion = 0;
+
+
+
 
 IMPLEMENTATION
 

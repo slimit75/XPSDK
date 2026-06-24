@@ -1,5 +1,5 @@
 {
-   Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
+   Copyright 2005-2026 Laminar Research, Sandy Barbour and Ben Supnik All
    rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
 }
 
@@ -19,9 +19,42 @@ INTERFACE
 USES
     XPLMDefs;
    {$A4}
+
+TYPE
+   XPLMChar   = AnsiChar;
+   XPLMString = PAnsiChar;
+
+CONST
+{$IFDEF MSWINDOWS}
+   XPLM_DLL = 'XPLM_64.dll';
+{$ENDIF}
+{$IFDEF DARWIN}
+   XPLM_DLL = 'XPLM.framework/XPLM';
+{$ENDIF}
+{$IFDEF LINUX}
+   XPLM_DLL = 'XPLM_64.so';
+{$ENDIF}
 {___________________________________________________________________________
  * NAVIGATION DATABASE ACCESS
  ___________________________________________________________________________}
+
+TYPE
+   {
+    XPLMNavRef
+    
+                    XPLMNavRef is an iterator into the navigation database. 
+                    The navigation database is essentially an array, but it is
+                    not necessarily densely populated. The only assumption you
+                    can safely make is that like-typed nav-aids are grouped
+                    together.
+    
+                    Use XPLMNavRef to refer to a nav-aid.
+    
+                    XPLM_NAV_NOT_FOUND is returned by functions that return an
+                    XPLMNavRef when the iterator must be invalid.
+   }
+   XPLMNavRef = Integer;
+   PXPLMNavRef = ^XPLMNavRef;
 
    {
     XPLMNavType
@@ -35,7 +68,6 @@ USES
     FMS. Querying the FMS for navaids will return it.  Use
     XPLMSetFMSEntryLatLon to set a lat/lon waypoint.
    }
-TYPE
    XPLMNavType = (
       xplm_Nav_Unknown                         = 0
  
@@ -68,22 +100,6 @@ TYPE
    );
    PXPLMNavType = ^XPLMNavType;
 
-   {
-    XPLMNavRef
-    
-    XPLMNavRef is an iterator into the navigation database.  The navigation
-    database is essentially an array, but it is not necessarily densely
-    populated. The only assumption you can safely make is that like-typed
-    nav-aids are grouped together.
-    
-    Use XPLMNavRef to refer to a nav-aid.
-    
-    XPLM_NAV_NOT_FOUND is returned by functions that return an XPLMNavRef when
-    the iterator must be invalid.
-   }
-   XPLMNavRef = Integer;
-   PXPLMNavRef = ^XPLMNavRef;
-
 CONST
    XPLM_NAV_NOT_FOUND   = -1;
 
@@ -94,6 +110,7 @@ CONST
     the entire database.  Returns XPLM_NAV_NOT_FOUND if the nav database is
     empty.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetFirstNavAid: XPLMNavRef;
     cdecl; external XPLM_DLL;
 
@@ -105,6 +122,7 @@ CONST
     passed in was the last one in the database.  Use this routine to iterate
     across all like-typed navaids or the entire database.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetNextNavAid(
                                         inNavAidRef         : XPLMNavRef) : XPLMNavRef;
     cdecl; external XPLM_DLL;
@@ -116,6 +134,7 @@ CONST
     database or XPLM_NAV_NOT_FOUND if there are no navaids of that type in the
     database.  You must pass exactly one navaid type to this routine.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMFindFirstNavAidOfType(
                                         inType              : XPLMNavType) : XPLMNavRef;
     cdecl; external XPLM_DLL;
@@ -127,6 +146,7 @@ CONST
     database or XPLM_NAV_NOT_FOUND if there are no navaids of that type in the
     database.  You must pass exactly one navaid type to this routine.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMFindLastNavAidOfType(
                                         inType              : XPLMNavType) : XPLMNavRef;
     cdecl; external XPLM_DLL;
@@ -158,6 +178,7 @@ CONST
     * Find the VOR whose ID is "BOS".
     * Find the nearest airport whose name contains "Chicago".
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMFindNavAid(
                                         inNameFragment      : XPLMString;    { Can be nil }
                                         inIDFragment        : XPLMString;    { Can be nil }
@@ -186,6 +207,7 @@ CONST
     The parameter is a single byte value 1 for true or 0 for false, not a C
     string.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetNavAidInfo(
                                         inRef               : XPLMNavRef;
                                         outType             : PXPLMNavType;    { Can be nil }
@@ -218,6 +240,7 @@ CONST
     
     This routine returns the number of entries in the FMS.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMCountFMSEntries: Integer;
     cdecl; external XPLM_DLL;
 
@@ -226,6 +249,7 @@ CONST
     
     This routine returns the index of the entry the pilot is viewing.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetDisplayedFMSEntry: Integer;
     cdecl; external XPLM_DLL;
 
@@ -234,6 +258,7 @@ CONST
     
     This routine returns the index of the entry the FMS is flying to.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetDestinationFMSEntry: Integer;
     cdecl; external XPLM_DLL;
 
@@ -242,6 +267,7 @@ CONST
     
     This routine changes which entry the FMS is showing to the index specified.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetDisplayedFMSEntry(
                                         inIndex             : Integer);
     cdecl; external XPLM_DLL;
@@ -252,6 +278,7 @@ CONST
     This routine changes which entry the FMS is flying the aircraft toward. The
     track is from the n-1'th point to the n'th point. 
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetDestinationFMSEntry(
                                         inIndex             : Integer);
     cdecl; external XPLM_DLL;
@@ -276,6 +303,7 @@ CONST
     Therefore, always initialize the variable to XPLM_NAV_NOT_FOUND before
     passing the pointer to this function.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetFMSEntryInfo(
                                         inIndex             : Integer;
                                         outType             : PXPLMNavType;    { Can be nil }
@@ -294,10 +322,11 @@ CONST
     and radio-beacon navaids.  Currently of radio beacons, the FMS can only
     support VORs and NDBs. Use the routines below to clear or fly to a lat/lon.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetFMSEntryInfo(
                                         inIndex             : Integer;
                                         inRef               : XPLMNavRef;
-                                        inAltitude          : Integer);
+                                        inAltitudeFt        : Integer);
     cdecl; external XPLM_DLL;
 
    {
@@ -306,11 +335,12 @@ CONST
     This routine changes the entry in the FMS to a lat/lon entry with the given
     coordinates.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetFMSEntryLatLon(
                                         inIndex             : Integer;
                                         inLat               : Single;
                                         inLon               : Single;
-                                        inAltitude          : Integer);
+                                        inAltitudeFt        : Integer);
     cdecl; external XPLM_DLL;
 
    {
@@ -319,6 +349,7 @@ CONST
     This routine clears the given entry, potentially shortening the flight
     plan.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMClearFMSEntry(
                                         inIndex             : Integer);
     cdecl; external XPLM_DLL;
@@ -327,14 +358,13 @@ CONST
    {
     XPLMNavFlightPlan
     
-        These enumerations defines the flightplan you are accesing using the
-        FMSFlightPlan functions. An airplane can have up to two navigation
-        devices (GPS or FMS) and each device can have two flightplans. A GPS
-        has an enroute and an approach flightplan. An FMS has an active and a
-        temporary flightplan. If you are trying to access a flightplan that
-        doesn't exist in your aircraft, e.g. asking a GPS for a temp
-        flightplan, FMSFlighPlan functions have no effect and will return no
-        information.
+    These enumerations defines the flightplan you are accesing using the
+    FMSFlightPlan functions. An airplane can have up to two navigation devices
+    (GPS or FMS) and each device can have two flightplans. A GPS has an enroute
+    and an approach flightplan. An FMS has an active and a temporary
+    flightplan. If you are trying to access a flightplan that doesn't exist in
+    your aircraft, e.g. asking a GPS for a temp flightplan, FMSFlighPlan
+    functions have no effect and will return no information.
    }
 TYPE
    XPLMNavFlightPlan = (
@@ -360,6 +390,7 @@ TYPE
     
     This routine returns the number of entries in the FMS.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMCountFMSFlightPlanEntries(
                                         inFlightPlan        : XPLMNavFlightPlan) : Integer;
     cdecl; external XPLM_DLL;
@@ -371,6 +402,7 @@ TYPE
     
     This routine returns the index of the entry the pilot is viewing.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetDisplayedFMSFlightPlanEntry(
                                         inFlightPlan        : XPLMNavFlightPlan) : Integer;
     cdecl; external XPLM_DLL;
@@ -382,6 +414,7 @@ TYPE
     
     This routine returns the index of the entry the FMS is flying to.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetDestinationFMSFlightPlanEntry(
                                         inFlightPlan        : XPLMNavFlightPlan) : Integer;
     cdecl; external XPLM_DLL;
@@ -393,6 +426,7 @@ TYPE
     
     This routine changes which entry the FMS is showing to the index specified.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetDisplayedFMSFlightPlanEntry(
                                         inFlightPlan        : XPLMNavFlightPlan;
                                         inIndex             : Integer);
@@ -406,6 +440,7 @@ TYPE
     This routine changes which entry the FMS is flying the aircraft toward. The
     track is from the n-1'th point to the n'th point.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetDestinationFMSFlightPlanEntry(
                                         inFlightPlan        : XPLMNavFlightPlan;
                                         inIndex             : Integer);
@@ -420,6 +455,7 @@ TYPE
     track is from the current position of the aircraft directly to the n'th
     point, ignoring the point before it.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetDirectToFMSFlightPlanEntry(
                                         inFlightPlan        : XPLMNavFlightPlan;
                                         inIndex             : Integer);
@@ -447,6 +483,7 @@ TYPE
     Therefore, always initialize the variable to XPLM_NAV_NOT_FOUND before
     passing the pointer to this function.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetFMSFlightPlanEntryInfo(
                                         inFlightPlan        : XPLMNavFlightPlan;
                                         inIndex             : Integer;
@@ -469,11 +506,12 @@ TYPE
     support VORs, NDBs and TACANs. Use the routines below to clear or fly to a
     lat/lon.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetFMSFlightPlanEntryInfo(
                                         inFlightPlan        : XPLMNavFlightPlan;
                                         inIndex             : Integer;
                                         inRef               : XPLMNavRef;
-                                        inAltitude          : Integer);
+                                        inAltitudeFt        : Integer);
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM410}
 
@@ -484,12 +522,13 @@ TYPE
     This routine changes the entry in the FMS to a lat/lon entry with the given
     coordinates.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetFMSFlightPlanEntryLatLon(
                                         inFlightPlan        : XPLMNavFlightPlan;
                                         inIndex             : Integer;
                                         inLat               : Single;
                                         inLon               : Single;
-                                        inAltitude          : Integer);
+                                        inAltitudeFt        : Integer);
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM410}
 
@@ -500,14 +539,15 @@ TYPE
     This routine changes the entry in the FMS to a lat/lon entry with the given
     coordinates. You can specify the display ID of the waypoint.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetFMSFlightPlanEntryLatLonWithId(
                                         inFlightPlan        : XPLMNavFlightPlan;
                                         inIndex             : Integer;
                                         inLat               : Single;
                                         inLon               : Single;
-                                        inAltitude          : Integer;
+                                        inAltitudeFt        : Integer;
                                         inId                : XPLMString;
-                                        inIdLength          : unsigned int);
+                                        inIdLength          : Cardinal);
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM410}
 
@@ -518,6 +558,7 @@ TYPE
     This routine clears the given entry, potentially shortening the flight
     plan.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMClearFMSFlightPlanEntry(
                                         inFlightPlan        : XPLMNavFlightPlan;
                                         inIndex             : Integer);
@@ -532,10 +573,11 @@ TYPE
     FMS or GPS, including instrument procedures. Use device index 0 for the
     pilot-side and device index 1 for the co-pilot side unit.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMLoadFMSFlightPlan(
                                         inDevice            : Integer;
                                         inBuffer            : XPLMString;
-                                        inBufferLen         : unsigned int);
+                                        inBufferLen         : Cardinal);
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM410}
 
@@ -554,10 +596,11 @@ TYPE
     the buffer you provided, the flightplan in the buffer will be incomplete
     and the buffer not null-terminated.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMSaveFMSFlightPlan(
                                         inDevice            : Integer;
                                         inBuffer            : XPLMString;
-                                        inBufferLen         : unsigned int) : unsigned int;
+                                        inBufferLen         : Cardinal) : Cardinal;
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM410}
 
@@ -574,6 +617,7 @@ TYPE
     This routine returns the type of the currently selected GPS destination,
     one of fix, airport, VOR or NDB.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetGPSDestinationType: XPLMNavType;
     cdecl; external XPLM_DLL;
 
@@ -582,8 +626,46 @@ TYPE
     
     This routine returns the current GPS destination.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetGPSDestination: XPLMNavRef;
     cdecl; external XPLM_DLL;
+
+{___________________________________________________________________________
+ * Host API's
+ ___________________________________________________________________________}
+
+CONST
+   XPLMNavigationHostApiVersion = 0;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 IMPLEMENTATION

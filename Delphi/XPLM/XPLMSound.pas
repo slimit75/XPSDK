@@ -1,5 +1,5 @@
 {
-   Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
+   Copyright 2005-2026 Laminar Research, Sandy Barbour and Ben Supnik All
    rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
 }
 
@@ -14,8 +14,23 @@ INTERFACE
 }
 
 USES
-    XPLMDefs, fmod, fmod_studio;
+    XPLMDefs;
    {$A4}
+
+TYPE
+   XPLMChar   = AnsiChar;
+   XPLMString = PAnsiChar;
+
+CONST
+{$IFDEF MSWINDOWS}
+   XPLM_DLL = 'XPLM_64.dll';
+{$ENDIF}
+{$IFDEF DARWIN}
+   XPLM_DLL = 'XPLM.framework/XPLM';
+{$ENDIF}
+{$IFDEF LINUX}
+   XPLM_DLL = 'XPLM_64.so';
+{$ENDIF}
 {$IFDEF XPLM400}
 {___________________________________________________________________________
  * FMOD ACCESS
@@ -81,6 +96,7 @@ TYPE
    PXPLMBankID = ^XPLMBankID;
 
 
+{$IFDEF _FMOD_COMMON_H}
    {
     XPLMGetFMODStudio
     
@@ -93,19 +109,66 @@ TYPE
     can obtain that FMOD::Studio by getting one of the radio-specific output
     channelgroups and using the getSystem() call on that.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetFMODStudio: PFMOD_STUDIO_SYSTEM;
     cdecl; external XPLM_DLL;
+{$ENDIF}
 
+{$IFDEF _FMOD_COMMON_H}
    {
     XPLMGetFMODChannelGroup
     
     Get a reference to a particular channel group - that is, an output channel.
     See the table above for values.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetFMODChannelGroup(
                                         audioType           : XPLMAudioBus) : PFMOD_CHANNELGROUP;
     cdecl; external XPLM_DLL;
+{$ENDIF}
 
+{$IFNDEF _FMOD_COMMON_H}
+   {
+    FMOD_RESULT
+   }
+TYPE
+   FMOD_RESULT = (
+      FMOD_OK                                  = 0
+ 
+   );
+   PFMOD_RESULT = ^FMOD_RESULT;
+{$ENDIF}
+
+{$IFNDEF _FMOD_COMMON_H}
+   {
+    FMOD_SOUND_FORMAT
+   }
+   FMOD_SOUND_FORMAT = (
+      FMOD_SOUND_FORMAT_PCM16                  = 2
+ 
+   );
+   PFMOD_SOUND_FORMAT = ^FMOD_SOUND_FORMAT;
+{$ENDIF}
+
+{$IFNDEF _FMOD_COMMON_H}
+   {
+    FMOD_CHANNEL
+   }
+   FMOD_CHANNEL = record end;
+   PFMOD_CHANNEL = ^FMOD_CHANNEL;
+{$ENDIF}
+
+{$IFNDEF _FMOD_COMMON_H}
+   {
+    FMOD_VECTOR
+   }
+   FMOD_VECTOR = RECORD
+     x                        : Single;
+     y                        : Single;
+     z                        : Single;
+   END;
+   PFMOD_VECTOR = ^FMOD_VECTOR;
+{$ENDIF}
 
    {
     XPLMPCMComplete_f
@@ -114,9 +177,8 @@ TYPE
     out when the FMOD::Channel is complete, if you need to deallocate memory
     for example.
    }
-TYPE
      XPLMPCMComplete_f = PROCEDURE(
-                                    inRefcon            : pointer;
+                                    inRefcon            : pointer;    { Can be nil }
                                     status              : FMOD_RESULT); cdecl;
 
    {
@@ -136,15 +198,16 @@ TYPE
     call fails and you provide a callback function, you will get a callback
     with an FMOD status code.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMPlayPCMOnBus(
                                         audioBuffer         : pointer;
-                                        bufferSize          : uint32_t;
+                                        bufferSize          : Integer;
                                         soundFormat         : FMOD_SOUND_FORMAT;
                                         freqHz              : Integer;
                                         numChannels         : Integer;
                                         loop                : Integer;
                                         audioType           : XPLMAudioBus;
-                                        inCallback          : XPLMPCMComplete_f;
+                                        inCallback          : XPLMPCMComplete_f;    { Can be nil }
                                         inRefcon            : pointer) : PFMOD_CHANNEL;    { Can be nil }
     cdecl; external XPLM_DLL;
 
@@ -155,6 +218,7 @@ TYPE
     this will be called. After this, the FMOD::Channel* will no longer be valid
     and must not be used in any future calls.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMStopAudio(
                                         fmod_channel        : PFMOD_CHANNEL) : FMOD_RESULT;
     cdecl; external XPLM_DLL;
@@ -165,6 +229,7 @@ TYPE
     Move the given audio channel (i.e. a single sound) to a specific location
     in local co-ordinates. This will set the sound to 3D if it is not already.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMSetAudioPosition(
                                         fmod_channel        : PFMOD_CHANNEL;
                                         position            : PFMOD_VECTOR;
@@ -181,6 +246,7 @@ TYPE
     can set a 3D sound back to 2D by passing negative values for both min amd
     max.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMSetAudioFadeDistance(
                                         fmod_channel        : PFMOD_CHANNEL;
                                         min_fade_distance   : Single;
@@ -195,6 +261,7 @@ TYPE
     Values from 0 to 1 are normal, above 1 can be used to artificially amplify
     a sound.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMSetAudioVolume(
                                         fmod_channel        : PFMOD_CHANNEL;
                                         source_volume       : Single) : FMOD_RESULT;
@@ -205,6 +272,7 @@ TYPE
     
     Change the current pitch of an active FMOD channel.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMSetAudioPitch(
                                         fmod_channel        : PFMOD_CHANNEL;
                                         audio_pitch_hz      : Single) : FMOD_RESULT;
@@ -217,6 +285,7 @@ TYPE
     is in local coordinates. This will set the sound to 3D if it is not
     already.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMSetAudioCone(
                                         fmod_channel        : PFMOD_CHANNEL;
                                         inside_angle        : Single;
@@ -226,6 +295,16 @@ TYPE
     cdecl; external XPLM_DLL;
 
 {$ENDIF XPLM400}
+{___________________________________________________________________________
+ * Host API's
+ ___________________________________________________________________________}
+
+CONST
+   XPLMSoundHostApiVersion = 0;
+
+
+
+
 
 IMPLEMENTATION
 

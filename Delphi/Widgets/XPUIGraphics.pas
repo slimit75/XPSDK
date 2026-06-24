@@ -1,5 +1,5 @@
 {
-   Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
+   Copyright 2005-2026 Laminar Research, Sandy Barbour and Ben Supnik All
    rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
 }
 
@@ -9,6 +9,21 @@ INTERFACE
 USES
     XPWidgetDefs, XPLMGraphics;
    {$A4}
+
+TYPE
+   XPLMChar   = AnsiChar;
+   XPLMString = PAnsiChar;
+
+CONST
+{$IFDEF MSWINDOWS}
+   XPWIDGETS_DLL = 'XPWidgets_64.dll';
+{$ENDIF}
+{$IFDEF DARWIN}
+   XPWIDGETS_DLL = 'XPWidgets.framework/XPWidgets';
+{$ENDIF}
+{$IFDEF LINUX}
+   XPWIDGETS_DLL = 'XPWidgets_64.so';
+{$ENDIF}
 {___________________________________________________________________________
  * UI GRAPHICS
  ___________________________________________________________________________}
@@ -61,13 +76,14 @@ TYPE
     appropriate using a bitmap scaling technique (scaling or repeating) as
     appropriate to the style.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPDrawWindow(
                                         inX1                : Integer;
                                         inY1                : Integer;
                                         inX2                : Integer;
                                         inY2                : Integer;
                                         inStyle             : XPWindowStyle);
-    cdecl; external XPWIDGETS.DLL;
+    cdecl; external XPWIDGETS_DLL;
 
    {
     XPGetWindowDefaultDimensions
@@ -75,11 +91,12 @@ TYPE
     This routine returns the default dimensions for a window. Output is either
     a minimum or fixed value depending on whether the window is scalable.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPGetWindowDefaultDimensions(
                                         inStyle             : XPWindowStyle;
                                         outWidth            : PInteger;    { Can be nil }
                                         outHeight           : PInteger);    { Can be nil }
-    cdecl; external XPWIDGETS.DLL;
+    cdecl; external XPWIDGETS_DLL;
 
    {
     XPElementStyle
@@ -216,6 +233,7 @@ TYPE
     ugly. Pass inLit to see the lit version of the element; if the element
     cannot be lit this is ignored.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPDrawElement(
                                         inX1                : Integer;
                                         inY1                : Integer;
@@ -223,7 +241,7 @@ TYPE
                                         inY2                : Integer;
                                         inStyle             : XPElementStyle;
                                         inLit               : Integer);
-    cdecl; external XPWIDGETS.DLL;
+    cdecl; external XPWIDGETS_DLL;
 
    {
     XPGetElementDefaultDimensions
@@ -232,12 +250,13 @@ TYPE
     element. outCanBeLit tells whether the element has both a lit and unlit
     state. Pass NULL to not receive any of these parameters.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPGetElementDefaultDimensions(
                                         inStyle             : XPElementStyle;
                                         outWidth            : PInteger;    { Can be nil }
                                         outHeight           : PInteger;    { Can be nil }
                                         outCanBeLit         : PInteger);    { Can be nil }
-    cdecl; external XPWIDGETS.DLL;
+    cdecl; external XPWIDGETS_DLL;
 
    {
     XPTrackStyle
@@ -277,6 +296,7 @@ TYPE
     positioned appropriately. You can also specify whether the track is lit or
     not.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPDrawTrack(
                                         inX1                : Integer;
                                         inY1                : Integer;
@@ -287,7 +307,7 @@ TYPE
                                         inValue             : Integer;
                                         inTrackStyle        : XPTrackStyle;
                                         inLit               : Integer);
-    cdecl; external XPWIDGETS.DLL;
+    cdecl; external XPWIDGETS_DLL;
 
    {
     XPGetTrackDefaultDimensions
@@ -296,11 +316,12 @@ TYPE
     scalable in the larger dimension. It also returns whether a track can be
     lit.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPGetTrackDefaultDimensions(
                                         inStyle             : XPTrackStyle;
                                         outWidth            : PInteger;
                                         outCanBeLit         : PInteger);
-    cdecl; external XPWIDGETS.DLL;
+    cdecl; external XPWIDGETS_DLL;
 
    {
     XPGetTrackMetrics
@@ -318,6 +339,7 @@ TYPE
     the thumb, and the up area and button. For horizontal scrollers, the left
     button decreases; for vertical scrollers, the top button decreases.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPGetTrackMetrics(
                                         inX1                : Integer;
                                         inY1                : Integer;
@@ -333,7 +355,25 @@ TYPE
                                         outThumbSize        : PInteger;
                                         outUpPageSize       : PInteger;
                                         outUpBtnSize        : PInteger);
-    cdecl; external XPWIDGETS.DLL;
+    cdecl; external XPWIDGETS_DLL;
+
+{___________________________________________________________________________
+ * Host API
+ ___________________________________________________________________________}
+
+CONST
+   XPLMGraphicsHostApiVersion = 0;
+
+
+
+
+
+
+
+
+
+
+
 
 
 IMPLEMENTATION

@@ -1,5 +1,5 @@
 {
-   Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
+   Copyright 2005-2026 Laminar Research, Sandy Barbour and Ben Supnik All
    rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
 }
 
@@ -19,6 +19,21 @@ INTERFACE
 USES
     XPLMDefs;
    {$A4}
+
+TYPE
+   XPLMChar   = AnsiChar;
+   XPLMString = PAnsiChar;
+
+CONST
+{$IFDEF MSWINDOWS}
+   XPLM_DLL = 'XPLM_64.dll';
+{$ENDIF}
+{$IFDEF DARWIN}
+   XPLM_DLL = 'XPLM.framework/XPLM';
+{$ENDIF}
+{$IFDEF LINUX}
+   XPLM_DLL = 'XPLM_64.so';
+{$ENDIF}
 {$IFDEF XPLM400}
 {___________________________________________________________________________
  * WEATHER ACCESS
@@ -139,18 +154,18 @@ TYPE
      { (i.e. QNH) is not valid.                                                   }
      pressure_sl              : Single;
      { Defined wind layers. Not all layers are always defined.                    }
-     wind_layers[XPLM_NUM_WIND_LAYERS]: XPLMWeatherInfoWinds_t;
+     wind_layers              : array[0..XPLM_NUM_WIND_LAYERS - 1] of XPLMWeatherInfoWinds_t;
      { Defined cloud layers. Not all layers are always defined.                   }
-     cloud_layers[XPLM_NUM_CLOUD_LAYERS]: XPLMWeatherInfoClouds_t;
+     cloud_layers             : array[0..XPLM_NUM_CLOUD_LAYERS - 1] of XPLMWeatherInfoClouds_t;
 {$IFDEF XPLM420}
      { Temperatures at altitude, in degrees C. Layer altitudes are the same       }
      { globally - see the 'sim/weather/region/atmosphere_alt_levels_m' dataref.   }
-     temp_layers[XPLM_NUM_TEMPERATURE_LAYERS]: Single;
+     temp_layers              : array[0..XPLM_NUM_TEMPERATURE_LAYERS - 1] of Single;
 {$ENDIF XPLM420}
 {$IFDEF XPLM420}
      { Dewpoints at altitude, in degrees C. Layer altitudes are the same globally }
      { - see the 'sim/weather/region/atmosphere_alt_levels_m' dataref.            }
-     dewp_layers[XPLM_NUM_TEMPERATURE_LAYERS]: Single;
+     dewp_layers              : array[0..XPLM_NUM_TEMPERATURE_LAYERS - 1] of Single;
 {$ENDIF XPLM420}
 {$IFDEF XPLM420}
      { The altitude in MSL of the troposphere.                                    }
@@ -188,6 +203,7 @@ TYPE
     This call is not intended to be used per-frame. It should be called only
     during the pre-flight loop callback.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetMETARForAirport(
                                         airport_id          : XPLMString;
                                         outMETAR            : PXPLMFixedString150_t);
@@ -197,14 +213,14 @@ TYPE
     XPLMGetWeatherAtLocation
     
     Get the current weather conditions at a given location. Note that this does
-    not work world-wide, only within the surrounding region. Return 1 if
-    detailed weather (i.e. an airport-specific METAR) was found, 0 if not. In
-    both cases, the structure will contain the best data available. The passed
-    in altitude is used to sample wind data vertically.
+    not work world-wide, only within the surrounding region. Return true if
+    detailed weather (i.e. an airport-specific METAR) was found, false if not.
+    In both cases, the structure will contain the best data available.
     
     This call is not intended to be used per-frame. It should be called only
     during the pre-flight loop callback.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetWeatherAtLocation(
                                         latitude            : Real;
                                         longitude           : Real;
@@ -227,6 +243,7 @@ TYPE
     and XPLMEndWeatherUpdate in a later callback, even within the same frame,
     is not permitted.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMBeginWeatherUpdate;
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM420}
@@ -263,6 +280,7 @@ TYPE
     This call is not intended to be used per-frame. It should be called only
     during the pre-flight loop callback.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMEndWeatherUpdate(
                                         isIncremental       : Integer;
                                         updateImmediately   : Integer);
@@ -285,6 +303,7 @@ TYPE
     This call is not intended to be used per-frame. It should be called only
     during the pre-flight loop callback.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetWeatherAtLocation(
                                         latitude            : Real;
                                         longitude           : Real;
@@ -304,6 +323,7 @@ TYPE
     This call is not intended to be used per-frame. It should be called only
     during the pre-flight loop callback.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMEraseWeatherAtLocation(
                                         latitude            : Real;
                                         longitude           : Real);
@@ -352,6 +372,7 @@ TYPE
     This call is not intended to be used per-frame. It should be called only
     during the pre-flight loop callback.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetWeatherAtAirport(
                                         airport_id          : XPLMString;
                                         in_info             : PXPLMWeatherInfo_t);
@@ -369,12 +390,28 @@ TYPE
     This call is not intended to be used per-frame. It should be called only
     during the pre-flight loop callback.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMEraseWeatherAtAirport(
                                         airport_id          : XPLMString);
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM420}
 
 {$ENDIF XPLM400}
+{___________________________________________________________________________
+ * Host API's
+ ___________________________________________________________________________}
+
+CONST
+   XPLMWeatherHostApiVersion = 0;
+
+
+
+
+
+
+
+
+
 
 IMPLEMENTATION
 

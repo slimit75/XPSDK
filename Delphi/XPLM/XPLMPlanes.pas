@@ -1,5 +1,5 @@
 {
-   Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
+   Copyright 2005-2026 Laminar Research, Sandy Barbour and Ben Supnik All
    rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
 }
 
@@ -30,6 +30,21 @@ INTERFACE
 USES
     XPLMDefs;
    {$A4}
+
+TYPE
+   XPLMChar   = AnsiChar;
+   XPLMString = PAnsiChar;
+
+CONST
+{$IFDEF MSWINDOWS}
+   XPLM_DLL = 'XPLM_64.dll';
+{$ENDIF}
+{$IFDEF DARWIN}
+   XPLM_DLL = 'XPLM.framework/XPLM';
+{$ENDIF}
+{$IFDEF LINUX}
+   XPLM_DLL = 'XPLM_64.so';
+{$ENDIF}
 {___________________________________________________________________________
  * USER AIRCRAFT ACCESS
  ___________________________________________________________________________}
@@ -103,8 +118,9 @@ TYPE
     Returns a XPLMInitResult enum value specifying whether the initalization
     succeeeded (and if not, what  caused it to fail).
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMInitFlight(
-                                        inJsonData          : P) : XPLMInitResult;
+                                        inJsonData          : XPLMString) : XPLMInitResult;
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM430}
 
@@ -117,11 +133,12 @@ TYPE
     https://developer.x-plane.com/article/flight-initialization-api/ for the
     JSON format  specification.
     
-    Returns an XPLMInitResult enum value specifying whether hte update
+    Returns an XPLMInitResult enum value specifying whether the update
     suceeeded (and if not, what caused  it to fail).
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMUpdateFlight(
-                                        inJsonData          : P) : XPLMInitResult;
+                                        inJsonData          : XPLMString) : XPLMInitResult;
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM430}
 
@@ -136,6 +153,7 @@ TYPE
     
     **WARNING**: this API takes a full, not relative aicraft path.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetUsersAircraft(
                                         inAircraftPath      : XPLMString);
     cdecl; external XPLM_DLL;
@@ -148,6 +166,7 @@ TYPE
     
     Use XPLMInitFlight for complete control over initialization.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMPlaceUserAtAirport(
                                         inAirportCode       : XPLMString);
     cdecl; external XPLM_DLL;
@@ -166,6 +185,7 @@ TYPE
     
     Use XPLMInitFlight for complete control over initialization.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMPlaceUserAtLocation(
                                         latitudeDegrees     : Real;
                                         longitudeDegrees    : Real;
@@ -242,10 +262,11 @@ TYPE
     controlling aircraft.  In X-Plane 7, this routine reflects the number of
     aircraft the user has enabled in the rendering options window.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMCountAircraft(
-                                        outTotalAircraft    : PInteger;
-                                        outActiveAircraft   : PInteger;
-                                        outController       : PXPLMPluginID);
+                                        outTotalAircraft    : PInteger;    { Can be nil }
+                                        outActiveAircraft   : PInteger;    { Can be nil }
+                                        outController       : PXPLMPluginID);    { Can be nil }
     cdecl; external XPLM_DLL;
 
    {
@@ -256,10 +277,11 @@ TYPE
     at least 256 chars in length; the path should be at least 512 chars in
     length.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetNthAircraftModel(
                                         inIndex             : Integer;
-                                        outFileName         : XPLMString;
-                                        outPath             : XPLMString);
+                                        outFileName         : XPLMString;    { Can be nil }
+                                        outPath             : XPLMString);    { Can be nil }
     cdecl; external XPLM_DLL;
 
 {___________________________________________________________________________
@@ -280,13 +302,13 @@ TYPE
    }
 TYPE
      XPLMPlanesAvailable_f = PROCEDURE(
-                                    inRefcon            : pointer); cdecl;
+                                    inRefcon            : pointer); cdecl;    { Can be nil }
 
    {
     XPLMAcquirePlanes
     
     XPLMAcquirePlanes grants your plugin exclusive access to the aircraft.  It
-    returns 1 if you gain access, 0 if you do not.
+    returns true if you gain access, false if you do not.
     
     inAircraft - pass in an array of pointers to strings specifying the planes
     you want loaded.  For any plane index you do not want loaded, pass a
@@ -300,10 +322,11 @@ TYPE
     callback will be called when the airplanes are available. If you do receive
     airplane access, your callback will not be called.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMAcquirePlanes(
-                                        inAircraft          : PXPLMString;    { Can be nil }
-                                        inCallback          : XPLMPlanesAvailable_f;
-                                        inRefcon            : pointer) : Integer;
+                                        inAircraft          : XPLMString;    { Can be nil }
+                                        inCallback          : XPLMPlanesAvailable_f;    { Can be nil }
+                                        inRefcon            : pointer) : Integer;    { Can be nil }
     cdecl; external XPLM_DLL;
 
    {
@@ -312,6 +335,7 @@ TYPE
     Call this function to release access to the planes.  Note that if you are
     disabled, access to planes is released for you and you must reacquire it.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMReleasePlanes;
     cdecl; external XPLM_DLL;
 
@@ -322,6 +346,7 @@ TYPE
     higher than the total number of planes availables, only the total number of
     planes available is actually used.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetActiveAircraftCount(
                                         inCount             : Integer);
     cdecl; external XPLM_DLL;
@@ -336,6 +361,7 @@ TYPE
     
     This API takes a full aircraft path.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetAircraftModel(
                                         inIndex             : Integer;
                                         inAircraftPath      : XPLMString);
@@ -347,6 +373,7 @@ TYPE
     This routine turns off X-Plane's AI for a given plane.  The plane will
     continue to draw and be a real plane in X-Plane, but will not move itself.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMDisableAIForPlane(
                                         inPlaneIndex        : Integer);
     cdecl; external XPLM_DLL;
@@ -361,10 +388,11 @@ TYPE
     
     This routine draws an aircraft.  It can only be called from a 3-d drawing
     callback.  Pass in the position of the plane in OpenGL local coordinates
-    and the orientation of the plane.  A 1 for full drawing indicates that the
-    whole plane must be drawn; a 0 indicates you only need the nav lights
+    and the orientation of the plane.  True for full drawing indicates that the
+    whole plane must be drawn; false indicates you only need the nav lights
     drawn. (This saves rendering time when planes are far away.)
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMDrawAircraft(
                                         inPlaneIndex        : Integer;
                                         inX                 : Single;
@@ -396,9 +424,26 @@ TYPE
     provided to do special experimentation with flight models without resetting
     flight.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMReinitUsersPlane;
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM_DEPRECATED}
+
+{___________________________________________________________________________
+ * Host API
+ ___________________________________________________________________________}
+
+CONST
+   XPLMPlanesHostApiVersion = 0;
+
+
+
+
+
+
+
+
+
 
 
 IMPLEMENTATION

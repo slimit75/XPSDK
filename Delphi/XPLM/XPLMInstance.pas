@@ -1,5 +1,5 @@
 {
-   Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
+   Copyright 2005-2026 Laminar Research, Sandy Barbour and Ben Supnik All
    rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
 }
 
@@ -36,6 +36,21 @@ INTERFACE
 USES
     XPLMDefs, XPLMScenery;
    {$A4}
+
+TYPE
+   XPLMChar   = AnsiChar;
+   XPLMString = PAnsiChar;
+
+CONST
+{$IFDEF MSWINDOWS}
+   XPLM_DLL = 'XPLM_64.dll';
+{$ENDIF}
+{$IFDEF DARWIN}
+   XPLM_DLL = 'XPLM.framework/XPLM';
+{$ENDIF}
+{$IFDEF LINUX}
+   XPLM_DLL = 'XPLM_64.so';
+{$ENDIF}
 {___________________________________________________________________________
  * Instance Creation and Destruction
  ___________________________________________________________________________}
@@ -72,9 +87,10 @@ TYPE
       to a one-element array containing a null item.  You cannot pass null for
       the array itself.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMCreateInstance(
                                         obj                 : XPLMObjectRef;
-                                        datarefs            : PXPLMString) : XPLMInstanceRef;
+                                        datarefs            : XPLMString) : XPLMInstanceRef;
     cdecl; external XPLM_DLL;
 
 {$IFDEF XPLM420}
@@ -88,6 +104,7 @@ TYPE
     system shifts. Use this for static instances that you would not otherwise
     have to move.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMInstanceSetAutoShift(
                                         instance            : XPLMInstanceRef);
     cdecl; external XPLM_DLL;
@@ -103,6 +120,7 @@ TYPE
     as you never use it again; the instance will maintain its own reference to
     the OBJ and the object OBJ be deallocated when the instance is destroyed.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMDestroyInstance(
                                         instance            : XPLMInstanceRef);
     cdecl; external XPLM_DLL;
@@ -129,6 +147,7 @@ TYPE
     BUG: before X-Plane 11.50, if you have no dataref registered, you must
     still pass a valid pointer for data and not null.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMInstanceSetPosition(
                                         instance            : XPLMInstanceRef;
                                         new_position        : PXPLMDrawInfo_t;
@@ -151,12 +170,28 @@ TYPE
     float for every dataref you have registered, and must contain valid
     floating point data.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMInstanceSetPositionDouble(
                                         instance            : XPLMInstanceRef;
                                         new_position        : PXPLMDrawInfoDouble_t;
                                         data                : PSingle);
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM420}
+
+{___________________________________________________________________________
+ * Host API
+ ___________________________________________________________________________}
+
+CONST
+   XPLMInstanceHostApiVersion = 0;
+
+
+
+
+
+
+
+
 
 
 IMPLEMENTATION

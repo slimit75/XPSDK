@@ -2,7 +2,7 @@
 #define _XPLMUtilities_h_
 
 /*
- * Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
+ * Copyright 2005-2026 Laminar Research, Sandy Barbour and Ben Supnik All
  * rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
  *
  */
@@ -11,11 +11,13 @@
  * XPLMUtilities
  ***************************************************************************/
 
+
 #include "XPLMDefs.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 /***************************************************************************
  * FILE UTILITIES
@@ -62,6 +64,7 @@ extern "C" {
  *
  */
 
+
 #if defined(XPLM200)
 /*
  * XPLMDataFileType
@@ -71,9 +74,11 @@ extern "C" {
  *
  */
 enum {
+
     /* A situation (.sit) file, which starts off a flight in a given              *
      * configuration.                                                             */
     xplm_DataFile_Situation                  = 1,
+
 
     /* A situation movie (.smo) file, which replays a past flight.                */
     xplm_DataFile_ReplayMovie                = 2,
@@ -82,6 +87,7 @@ enum {
 };
 typedef int XPLMDataFileType;
 #endif /* XPLM200 */
+
 /*
  * XPLMGetSystemPath
  * 
@@ -92,8 +98,10 @@ typedef int XPLMDataFileType;
  * returned using the current native or OS path conventions.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMGetSystemPath(
-                         char *               outSystemPath);
+                         char                 outSystemPath[512]);
+
 /*
  * XPLMGetPrefsPath
  * 
@@ -106,8 +114,10 @@ XPLM_API void       XPLMGetSystemPath(
  * returned using the current native or OS path conventions.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMGetPrefsPath(
-                         char *               outPrefsPath);
+                         char                 outPrefsPath[512]);
+
 /*
  * XPLMGetDirectorySeparator
  * 
@@ -117,7 +127,9 @@ XPLM_API void       XPLMGetPrefsPath(
  * platform. The character returned will reflect the current file path mode.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API const char * XPLMGetDirectorySeparator(void);
+
 /*
  * XPLMExtractFileAndPath
  * 
@@ -128,8 +140,10 @@ XPLM_API const char * XPLMGetDirectorySeparator(void);
  * with the path and is null terminated with no trailing separator.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API char *     XPLMExtractFileAndPath(
                          char *               inFullPath);
+
 /*
  * XPLMGetDirectoryContents
  * 
@@ -137,8 +151,9 @@ XPLM_API char *     XPLMExtractFileAndPath(
  * path, no trailing : or / ). The output is returned as a list of NULL
  * terminated strings. An index array (if specified) is filled with pointers
  * into the strings. The last file is indicated by a zero-length string (and
- * NULL in the indices). This routine will return 1 if you had capacity for
- * all files or 0 if you did not. You can also skip a given number of files.
+ * NULL in the indices). This routine will return true if you had capacity for
+ * all files or false if you did not. You can also skip a given number of
+ * files.
  * 
  *  * inDirectoryPath - a null terminated C string containing the full path to
  *    the directory with no trailing directory char.
@@ -172,15 +187,17 @@ XPLM_API char *     XPLMExtractFileAndPath(
  * 6 compatibility is needed, use your own code to iterate directories.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API int        XPLMGetDirectoryContents(
                          const char *         inDirectoryPath,
                          int                  inFirstReturn,
                          char *               outFileNames,
                          int                  inFileNameBufSize,
-                         char **              outIndices,             /* Can be NULL */
+                         char *               outIndices[],           /* Can be NULL */
                          int                  inIndexCount,
                          int *                outTotalFiles,          /* Can be NULL */
                          int *                outReturnedFiles);      /* Can be NULL */
+
 #if defined(XPLM200)
 /*
  * XPLMLoadDataFile
@@ -190,10 +207,12 @@ XPLM_API int        XPLMGetDirectoryContents(
  * replay movies, not sit files).
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API int        XPLMLoadDataFile(
                          XPLMDataFileType     inFileType,
                          const char *         inFilePath);            /* Can be NULL */
 #endif /* XPLM200 */
+
 #if defined(XPLM200)
 /*
  * XPLMSaveDataFile
@@ -202,13 +221,36 @@ XPLM_API int        XPLMLoadDataFile(
  * folder.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API int        XPLMSaveDataFile(
                          XPLMDataFileType     inFileType,
                          const char *         inFilePath);
 #endif /* XPLM200 */
+
 /***************************************************************************
  * X-PLANE MISC
  ***************************************************************************/
+
+
+/*
+ * XPLMReturnString
+ * 
+ * Copies `inString` into the host-managed return slot for the current
+ * callback and returns a pointer that remains valid for the duration of the
+ * host's use of the callback's result. This is the only sanctioned way for an
+ * XPLM callback whose return type is `const char *` to hand a string back to
+ * X-Plane: returning a stack buffer, a string literal, or any other pointer
+ * is a contract violation and may corrupt the result.
+ * 
+ * The host pushes a return slot before invoking each `const char *` callback
+ * and pops it afterwards, so callbacks must call
+ * `XPLMReturnString` at most once per invocation and must not retain the
+ *  returned pointer past the callback's return.
+ *
+ */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
+XPLM_API const char * XPLMReturnString(
+                         const char *         inString);
 
 /*
  * XPLMHostApplicationID
@@ -221,46 +263,58 @@ XPLM_API int        XPLMSaveDataFile(
  *
  */
 enum {
+
     xplm_Host_Unknown                        = 0,
 
+
     xplm_Host_XPlane                         = 1,
+
 
 #if defined(XPLM_DEPRECATED)
     xplm_Host_PlaneMaker                     = 2,
 
 #endif /* XPLM_DEPRECATED */
+
 #if defined(XPLM_DEPRECATED)
     xplm_Host_WorldMaker                     = 3,
 
 #endif /* XPLM_DEPRECATED */
+
 #if defined(XPLM_DEPRECATED)
     xplm_Host_Briefer                        = 4,
 
 #endif /* XPLM_DEPRECATED */
+
 #if defined(XPLM_DEPRECATED)
     xplm_Host_PartMaker                      = 5,
 
 #endif /* XPLM_DEPRECATED */
+
 #if defined(XPLM_DEPRECATED)
     xplm_Host_YoungsMod                      = 6,
 
 #endif /* XPLM_DEPRECATED */
+
 #if defined(XPLM_DEPRECATED)
     xplm_Host_XAuto                          = 7,
 
 #endif /* XPLM_DEPRECATED */
+
 #if defined(XPLM_DEPRECATED)
     xplm_Host_Xavion                         = 8,
 
 #endif /* XPLM_DEPRECATED */
+
 #if defined(XPLM_DEPRECATED)
     xplm_Host_Control_Pad                    = 9,
 
 #endif /* XPLM_DEPRECATED */
+
 #if defined(XPLM_DEPRECATED)
     xplm_Host_PFD_Map                        = 10,
 
 #endif /* XPLM_DEPRECATED */
+
 #if defined(XPLM_DEPRECATED)
     xplm_Host_RADAR                          = 11,
 
@@ -268,6 +322,7 @@ enum {
 
 };
 typedef int XPLMHostApplicationID;
+
 /*
  * XPLMLanguageCode
  * 
@@ -278,36 +333,48 @@ typedef int XPLMHostApplicationID;
  *
  */
 enum {
+
     xplm_Language_Unknown                    = 0,
+
 
     xplm_Language_English                    = 1,
 
+
     xplm_Language_French                     = 2,
+
 
     xplm_Language_German                     = 3,
 
+
     xplm_Language_Italian                    = 4,
+
 
     xplm_Language_Spanish                    = 5,
 
+
     xplm_Language_Korean                     = 6,
+
 
 #if defined(XPLM200)
     xplm_Language_Russian                    = 7,
 
 #endif /* XPLM200 */
+
 #if defined(XPLM200)
     xplm_Language_Greek                      = 8,
 
 #endif /* XPLM200 */
+
 #if defined(XPLM200)
     xplm_Language_Japanese                   = 9,
 
 #endif /* XPLM200 */
+
 #if defined(XPLM300)
     xplm_Language_Chinese                    = 10,
 
 #endif /* XPLM300 */
+
 #if defined(XPLM400)
     xplm_Language_Ukrainian                  = 11,
 
@@ -315,6 +382,7 @@ enum {
 
 };
 typedef int XPLMLanguageCode;
+
 #if defined(XPLM200)
 /*
  * XPLMError_f
@@ -332,22 +400,25 @@ typedef int XPLMLanguageCode;
 typedef void (* XPLMError_f)(
                          const char *         inMessage);
 #endif /* XPLM200 */
+
 #if defined(XPLM_DEPRECATED)
 /*
  * XPLMInitialized
  * 
- * Deprecated: This function returns 1 if X-Plane has properly initialized the
- * plug-in system. If this routine returns 0, many XPLM functions will not
- * work.
+ * Deprecated: This function returns true if X-Plane has properly initialized
+ * the plug-in system. If this routine returns false, many XPLM functions will
+ * not work.
  * 
  * NOTE: because plugins are always called from within the XPLM, there is no
- * need to check for initialization; it will always return 1.  This routine is
- * deprecated - you do not need to check it before continuing within your
+ * need to check for initialization; it will always return true.  This routine
+ * is deprecated - you do not need to check it before continuing within your
  * plugin.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API int        XPLMInitialized(void);
 #endif /* XPLM_DEPRECATED */
+
 /*
  * XPLMGetVersions
  * 
@@ -360,17 +431,21 @@ XPLM_API int        XPLMInitialized(void);
  * version-specific behavior.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMGetVersions(
                          int *                outXPlaneVersion,
                          int *                outXPLMVersion,
                          XPLMHostApplicationID * outHostID);
+
 /*
  * XPLMGetLanguage
  * 
  * This routine returns the langauge the sim is running in.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API XPLMLanguageCode XPLMGetLanguage(void);
+
 #if defined(XPLM200)
 /*
  * XPLMFindSymbol
@@ -400,9 +475,11 @@ XPLM_API XPLMLanguageCode XPLMGetLanguage(void);
  * the correct type.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void *     XPLMFindSymbol(
                          const char *         inString);
 #endif /* XPLM200 */
+
 #if defined(XPLM200)
 /*
  * XPLMSetErrorCallback
@@ -429,9 +506,11 @@ XPLM_API void *     XPLMFindSymbol(
  * the field".
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMSetErrorCallback(
                          XPLMError_f          inCallback);
 #endif /* XPLM200 */
+
 /*
  * XPLMDebugString
  * 
@@ -446,8 +525,10 @@ XPLM_API void       XPLMSetErrorCallback(
  * parts of the system.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMDebugString(
                          const char *         inString);
+
 /*
  * XPLMSpeakString
  * 
@@ -457,8 +538,10 @@ XPLM_API void       XPLMDebugString(
  * may not speak or print depending on user preferences.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMSpeakString(
                          const char *         inString);
+
 /*
  * XPLMGetVirtualKeyDescription
  * 
@@ -468,8 +551,10 @@ XPLM_API void       XPLMSpeakString(
  * read 'unknown' or be a blank or NULL string if the virtual key is unknown.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API const char * XPLMGetVirtualKeyDescription(
                          char                 inVirtualKey);
+
 /*
  * XPLMReloadScenery
  * 
@@ -481,7 +566,9 @@ XPLM_API const char * XPLMGetVirtualKeyDescription(
  * scenery" from the developer menu.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMReloadScenery(void);
+
 #if defined(XPLM200)
 /***************************************************************************
  * X-PLANE COMMAND MANAGEMENT
@@ -526,6 +613,7 @@ XPLM_API void       XPLMReloadScenery(void);
  *
  */
 
+
 /*
  * XPLMCommandPhase
  * 
@@ -533,11 +621,14 @@ XPLM_API void       XPLMReloadScenery(void);
  *
  */
 enum {
+
     /* The command is being started.                                              */
     xplm_CommandBegin                        = 0,
 
+
     /* The command is continuing to execute.                                      */
     xplm_CommandContinue                     = 1,
+
 
     /* The command has ended.                                                     */
     xplm_CommandEnd                          = 2,
@@ -545,6 +636,7 @@ enum {
 
 };
 typedef int XPLMCommandPhase;
+
 /*
  * XPLMCommandRef
  * 
@@ -559,6 +651,7 @@ typedef int XPLMCommandPhase;
  *
  */
 typedef void * XPLMCommandRef;
+
 /*
  * XPLMCommandCallback_f
  * 
@@ -567,15 +660,16 @@ typedef void * XPLMCommandRef;
  * particular command, the phase of the command that is executing, and a
  * reference pointer that you specify when registering the callback.
  * 
- * Your command handler should return 1 to let processing of the command
- * continue to other plugins and X-Plane, or 0 to halt processing, potentially
- * bypassing X-Plane code.
+ * Your command handler should return true to let processing of the command
+ * continue to other plugins and X-Plane, or false to halt processing,
+ * potentially bypassing X-Plane code.
  *
  */
 typedef int (* XPLMCommandCallback_f)(
                          XPLMCommandRef       inCommand,
                          XPLMCommandPhase     inPhase,
-                         void *               inRefcon);
+                         void*                inRefcon);
+
 /*
  * XPLMFindCommand
  * 
@@ -583,8 +677,10 @@ typedef int (* XPLMCommandCallback_f)(
  * reference or NULL if the command does not exist.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API XPLMCommandRef XPLMFindCommand(
                          const char *         inName);
+
 /*
  * XPLMCommandBegin
  * 
@@ -594,8 +690,10 @@ XPLM_API XPLMCommandRef XPLMFindCommand(
  * call.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMCommandBegin(
                          XPLMCommandRef       inCommand);
+
 /*
  * XPLMCommandEnd
  * 
@@ -604,8 +702,10 @@ XPLM_API void       XPLMCommandBegin(
  * not begin.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMCommandEnd(
                          XPLMCommandRef       inCommand);
+
 /*
  * XPLMCommandOnce
  * 
@@ -614,8 +714,10 @@ XPLM_API void       XPLMCommandEnd(
  * XPLMCommandEnd() back to back.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMCommandOnce(
                          XPLMCommandRef       inCommand);
+
 /*
  * XPLMCreateCommand
  * 
@@ -625,9 +727,11 @@ XPLM_API void       XPLMCommandOnce(
  * screen.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API XPLMCommandRef XPLMCreateCommand(
                          const char *         inName,
                          const char *         inDescription);
+
 /*
  * XPLMRegisterCommandHandler
  * 
@@ -641,11 +745,13 @@ XPLM_API XPLMCommandRef XPLMCreateCommand(
  * before and after a command.)
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMRegisterCommandHandler(
                          XPLMCommandRef       inComand,
                          XPLMCommandCallback_f inHandler,
                          int                  inBefore,
-                         void *               inRefcon);
+                         void*                inRefcon);
+
 /*
  * XPLMUnregisterCommandHandler
  * 
@@ -653,12 +759,14 @@ XPLM_API void       XPLMRegisterCommandHandler(
  * XPLMRegisterCommandHandler.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMUnregisterCommandHandler(
                          XPLMCommandRef       inComand,
                          XPLMCommandCallback_f inHandler,
                          int                  inBefore,
-                         void *               inRefcon);
+                         void*                inRefcon);
 #endif /* XPLM200 */
+
 #if defined(XPLM_DEPRECATED)
 /***************************************************************************
  * X-PLANE USER INTERACTION
@@ -677,6 +785,7 @@ XPLM_API void       XPLMUnregisterCommandHandler(
  * underlying sim data.
  *
  */
+
 
 /*
  * XPLMCommandKeyID
@@ -784,6 +893,7 @@ enum {
           xplm_key_max
 };
 typedef int XPLMCommandKeyID;
+
 /*
  * XPLMCommandButtonID
  * 
@@ -891,6 +1001,7 @@ enum {
           xplm_joy_max
 };
 typedef int XPLMCommandButtonID;
+
 /*
  * XPLMSimulateKeyPress
  * 
@@ -902,9 +1013,11 @@ typedef int XPLMCommandButtonID;
  * Deprecated: use XPLMCommandOnce
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMSimulateKeyPress(
                          int                  inKeyType,
                          int                  inKey);
+
 #if defined(XPLM_DEPRECATED)
 /*
  * XPLMCommandKeyStroke
@@ -917,9 +1030,11 @@ XPLM_API void       XPLMSimulateKeyPress(
  * Deprecated: use XPLMCommandOnce
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMCommandKeyStroke(
                          XPLMCommandKeyID     inKey);
 #endif /* XPLM_DEPRECATED */
+
 #if defined(XPLM_DEPRECATED)
 /*
  * XPLMCommandButtonPress
@@ -933,9 +1048,11 @@ XPLM_API void       XPLMCommandKeyStroke(
  * Deprecated: use XPLMCommandBegin.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMCommandButtonPress(
                          XPLMCommandButtonID  inButton);
 #endif /* XPLM_DEPRECATED */
+
 #if defined(XPLM_DEPRECATED)
 /*
  * XPLMCommandButtonRelease
@@ -946,6 +1063,7 @@ XPLM_API void       XPLMCommandButtonPress(
  * Deprecated: use XPLMCommandEnd.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMCommandButtonRelease(
                          XPLMCommandButtonID  inButton);
 #endif /* XPLM_DEPRECATED */

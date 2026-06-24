@@ -2,7 +2,7 @@
 #define _XPLMInstance_h_
 
 /*
- * Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
+ * Copyright 2005-2026 Laminar Research, Sandy Barbour and Ben Supnik All
  * rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
  *
  */
@@ -39,12 +39,15 @@
  *
  */
 
+
 #include "XPLMDefs.h"
+
 #include "XPLMScenery.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 /***************************************************************************
  * Instance Creation and Destruction
@@ -54,6 +57,7 @@ extern "C" {
  *
  */
 
+
 /*
  * XPLMInstanceRef
  * 
@@ -61,6 +65,7 @@ extern "C" {
  *
  */
 typedef void * XPLMInstanceRef;
+
 /*
  * XPLMCreateInstance
  * 
@@ -81,9 +86,11 @@ typedef void * XPLMInstanceRef;
  *   the array itself.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API XPLMInstanceRef XPLMCreateInstance(
                          XPLMObjectRef        obj,
-                         const char **        datarefs);
+                         char const*          datarefs[]);
+
 #if defined(XPLM420)
 /*
  * XPLMInstanceSetAutoShift
@@ -96,9 +103,11 @@ XPLM_API XPLMInstanceRef XPLMCreateInstance(
  * have to move.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMInstanceSetAutoShift(
                          XPLMInstanceRef      instance);
 #endif /* XPLM420 */
+
 /*
  * XPLMDestroyInstance
  * 
@@ -110,11 +119,14 @@ XPLM_API void       XPLMInstanceSetAutoShift(
  * the OBJ and the object OBJ be deallocated when the instance is destroyed.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMDestroyInstance(
                          XPLMInstanceRef      instance);
+
 /***************************************************************************
  * Instance Manipulation
  ***************************************************************************/
+
 
 /*
  * XPLMInstanceSetPosition
@@ -135,10 +147,12 @@ XPLM_API void       XPLMDestroyInstance(
  * still pass a valid pointer for data and not null.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMInstanceSetPosition(
                          XPLMInstanceRef      instance,
                          const XPLMDrawInfo_t * new_position,
-                         const float *        data);
+                         const float          data[]);
+
 #if defined(XPLM420)
 /*
  * XPLMInstanceSetPositionDouble
@@ -156,10 +170,11 @@ XPLM_API void       XPLMInstanceSetPosition(
  * floating point data.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMInstanceSetPositionDouble(
                          XPLMInstanceRef      instance,
                          const XPLMDrawInfoDouble_t * new_position,
-                         const float *        data);
+                         const float          data[]);
 #endif /* XPLM420 */
 #ifdef __cplusplus
 }
