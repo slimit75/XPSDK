@@ -266,12 +266,11 @@ XPLM_API int        XPLMFontFitForward(
 
 <span class="sym-badge badge-fn">function</span>
 
-This function returns the number of characters from the end of a string
-that fit within the specified width at the given font size. Characters are
-measured right to left. This is useful for right-aligning a truncated
-string.
+This function returns the number of characters in the input string that must be
+skipped to fit the reset of the string into the specified space. This is useful for
+right-aligning a truncated string.
 
-Returns a character count.
+Returns a character count - the number of characters that must be removed to fit.
 
 ```cpp
 XPLM_API int        XPLMFontFitReverse(
@@ -392,7 +391,7 @@ justification, just as in XPLMFontDrawString.
 
 - fontSize: the font size in pixels.
 - x, y: the anchor position of the baseline, in panel coordinates.
-- angle: the rotation angle in degrees, positive counterclockwise.
+- angle: the rotation angle in degrees, positive clockwise.
 
 ```cpp
 XPLM_API void       XPLMFontDrawStringRotated(

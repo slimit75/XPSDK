@@ -56,6 +56,41 @@ XPLM_API void       XPLMInstanceSetPositionDouble(
 
 ---
 
+<div class="sym-block sym-function" data-name="XPLMInstanceSetCoordinateSpace" data-type="function" markdown="1">
+
+## XPLMInstanceSetCoordinateSpace { .symbol-title }
+
+<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM440</span>
+
+XPLMInstanceSetCoordinateSpace changes the coordinate space used to interpret the positions you pass to
+XPLMInstanceSetPosition or XPLMInstanceSetPositionDouble. You can set the coordinate space once up front
+with XPLMCreateInstanceEx(), or change it on the fly with this call. By default, positions are in world
+space. In aircraft space, positions are relative to the specified aircraft's CG and body axes; in camera
+space, positions are relative to the camera/view.
+
+For the two aircraft spaces, aircraft_index specifies which aircraft (0 = user's aircraft). For world and
+camera space, aircraft_index is ignored.
+
+Changing the coordinate space does not make the instance jump: X-Plane re-expresses the instance's current
+world location in the new space, so the object stays exactly where it is and then begins tracking the new
+parent. After the change it is up to you to feed positions that are correct for the new space - pushing the
+old space's numbers again will move the object.
+
+Auto-shift (XPLMInstanceSetAutoShift) is independent of the coordinate space: changing the space does not
+turn auto-shift off, but auto-shift only has an effect while the instance is in world space.
+
+```cpp
+XPLM_API void       XPLMInstanceSetCoordinateSpace(
+                         XPLMInstanceRef      instance,
+                         XPLMCoordinateSpace_t space,
+                         int                  aircraft_index
+                    );
+```
+
+</div>
+
+---
+
 
 
 <!-- whitespace for navigation purposes -->

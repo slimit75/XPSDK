@@ -48,6 +48,27 @@ are only visible at close-in zoom levels.
 
 ---
 
+<div class="sym-block sym-enum" data-name="XPLMEGPWSStyle" data-type="enum" markdown="1">
+
+## XPLMEGPWSStyle { .symbol-title }
+
+<span class="sym-badge badge-enum">enum</span>
+
+Flag that controls how the map's EGPWS display layer is rendered.
+
+<div class="enum-table" markdown="1">
+
+| Name | Value | Description |
+|:--|:--|:--|
+| xplm_EGPWS_Style_Blocky | 0 | Terrain is drawn as small dithered blocks (common in most airliner avionics). |
+| xplm_EGPWS_Style_Smooth | 1 | Terrain countours are smooth and curved (common in modern avionics). |
+
+</div>
+
+</div>
+
+---
+
 <div class="sym-block sym-struct" data-name="XPLMMapCustomData_t" data-type="struct" markdown="1">
 
 ## XPLMMapCustomData_t { .symbol-title }
@@ -68,6 +89,9 @@ typedef struct {
      float                     acfAlt;
      int                       gearDown;
      float                     trueRotation;
+     float                     nearestRwyElev;
+     float                     egpwsBrightness;
+     XPLMEGPWSStyle            egpwsStyle;
 } XPLMMapCustomData_t;
 ```
 
@@ -187,6 +211,37 @@ XPLM_API void       XPLMMapDisplayDrawIn(
                          int                  right,
                          int                  bottom,
                          XPLMMapCustomData_t* dataOverrides    /* Can be NULL */
+                    );
+```
+
+</div>
+
+---
+
+<div class="sym-block sym-function" data-name="XPLMMapDisplayGetTerrainAltitudes" data-type="function" markdown="1">
+
+## XPLMMapDisplayGetTerrainAltitudes { .symbol-title }
+
+<span class="sym-badge badge-fn">function</span>
+
+This function returns the lowest and highest altitude shown on the map's
+EGPWS terrain display.
+
+Note that those altitudes are only available if the map has been drawn
+with the xplm_Map_EGPWS layer. If altitudes are not available, the function
+returns false, and the altitude pointers are not modified.
+
+This function must be called from within an avionics drawing callback.
+
+- map: the map display handle.
+- min: a pointer to the minimum altitude.
+- max: a pointer to the maximum altitude.
+
+```cpp
+XPLM_API int        XPLMMapDisplayGetTerrainAltitudes(
+                         XPLMMapDisplayRef    map,
+                         float*               min,    /* Can be NULL */
+                         float*               max    /* Can be NULL */
                     );
 ```
 

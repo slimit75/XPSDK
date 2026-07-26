@@ -172,7 +172,7 @@ typedef struct {
 <span class="sym-badge badge-cb">callback</span>
 
 If you use XPLMPlayPCMOnBus() you may use this optional callback to find out when the FMOD::Channel is
-complete, if you need to deallocate memory for example.
+complete, if you need to deallocate memory for example. It will not be called more than once per completion.
 
 ```cpp
 typedef void (* XPLMPCMComplete_f)(

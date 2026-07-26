@@ -80,7 +80,7 @@ typedef struct {
 
 You provide this callback when loading an object asynchronously; it will be called once the object is
 loaded. Your refcon is passed back. The object ref passed in is the newly loaded object (ready for use) or
-NULL if an error occured.
+NULL if an error occured. It will not be called more than once per object.
 
 If your plugin is disabled, this callback will be delivered as soon as the plugin is re-enabled. If your
 plugin is unloaded before this callback is ever called, the SDK will release the object handle for you.

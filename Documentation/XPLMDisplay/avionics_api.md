@@ -23,7 +23,7 @@ screen and bezel as if they were at the size you specified when registering call
 
 ## XPLMWindowContentType { .symbol-title }
 
-<span class="sym-badge badge-enum">enum</span> <span class="sym-badge badge-version">XPLMPG1</span>
+<span class="sym-badge badge-enum">enum</span> <span class="sym-badge badge-version">XPLM440</span>
 
 XPLMWindowContentType describes how the content for a window (or an avionics device's screen) is provided.
 
@@ -407,6 +407,58 @@ typedef float (* XPLMAvionicsBrightness_f)(
 
 ---
 
+<div class="sym-block sym-callback" data-name="XPLMAvionicsBrowserLoadFinished_f" data-type="callback" markdown="1">
+
+## XPLMAvionicsBrowserLoadFinished_f { .symbol-title }
+
+<span class="sym-badge badge-cb">callback</span> <span class="sym-badge badge-version">XPLM440</span>
+
+Called for a browser-content-type avionics device when its main frame finishes
+loading a page. This is NOT a guarantee that the load succeeded: a page that
+renders an HTTP error response (e.g. a server's 404 page) also "finishes" here.
+A navigation that fails before the page renders fires XPLMAvionicsBrowserLoadError_f
+instead. If your page needs to know its own HTTP status, have it report that from
+JavaScript via a browser function. Set this via browserLoadFinishedFunc in
+XPLMCreateAvionics_t.
+
+```cpp
+typedef void (* XPLMAvionicsBrowserLoadFinished_f)(
+                         XPLMAvionicsID       inAvionics,
+                         const char *         inURL,
+                         void *               inRefcon
+                    );
+```
+
+</div>
+
+---
+
+<div class="sym-block sym-callback" data-name="XPLMAvionicsBrowserLoadError_f" data-type="callback" markdown="1">
+
+## XPLMAvionicsBrowserLoadError_f { .symbol-title }
+
+<span class="sym-badge badge-cb">callback</span> <span class="sym-badge badge-version">XPLM440</span>
+
+Called for a browser-content-type avionics device when a navigation fails at the
+network level (bad URL, host unreachable, TLS failure, file not found). inError
+describes the failure. This may be followed by XPLMAvionicsBrowserLoadFinished_f
+for a substitute error page, so treat a load error as the authoritative signal
+that the navigation to inURL failed. Set this via browserLoadErrorFunc in
+XPLMCreateAvionics_t.
+
+```cpp
+typedef void (* XPLMAvionicsBrowserLoadError_f)(
+                         XPLMAvionicsID       inAvionics,
+                         const char *         inURL,
+                         const char *         inError,    /* Can be NULL */
+                         void *               inRefcon
+                    );
+```
+
+</div>
+
+---
+
 <div class="sym-block sym-struct" data-name="XPLMCreateAvionics_t" data-type="struct" markdown="1">
 
 ## XPLMCreateAvionics_t { .symbol-title }
@@ -444,6 +496,8 @@ typedef struct {
      userref                   refcon;
      XPLMWindowContentType     contentType;
      int                       windowWithChrome;
+     XPLMAvionicsBrowserLoadFinished_f browserLoadFinishedFunc;
+     XPLMAvionicsBrowserLoadError_f browserLoadErrorFunc;
 } XPLMCreateAvionics_t;
 ```
 
@@ -482,6 +536,166 @@ Destroys the cockpit device and deallocates its screen's memory. You should only
 ```cpp
 XPLM_API void       XPLMDestroyAvionics(
                          XPLMAvionicsID       inHandle
+                    );
+```
+
+</div>
+
+---
+
+<div class="sym-block sym-function" data-name="XPLMAvionicsSetURL" data-type="function" markdown="1">
+
+## XPLMAvionicsSetURL { .symbol-title }
+
+<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM440</span>
+
+Loads a URL into a browser-content-type avionics device (one created via
+XPLMCreateAvionicsEx() with contentType xplm_WindowContentTypeBrowser). Safe
+to call before the underlying webview has finished initialising; the load is
+queued and applied as soon as the browser is ready, so you may call this
+immediately after XPLMCreateAvionicsEx(). Subsequent calls replace the
+pending or current page. Has no effect on non-browser devices.
+
+```cpp
+XPLM_API void       XPLMAvionicsSetURL(
+                         XPLMAvionicsID       inAvionicsID,
+                         const char *         inURL
+                    );
+```
+
+</div>
+
+---
+
+<div class="sym-block sym-function" data-name="XPLMAvionicsRefresh" data-type="function" markdown="1">
+
+## XPLMAvionicsRefresh { .symbol-title }
+
+<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM440</span>
+
+Reloads the current URL in a browser-content-type avionics device. Pass true
+for inIgnoreCache to bypass the HTTP cache (the equivalent of a shift-reload).
+Has no effect on non-browser devices.
+
+```cpp
+XPLM_API void       XPLMAvionicsRefresh(
+                         XPLMAvionicsID       inAvionicsID,
+                         int                  inIgnoreCache
+                    );
+```
+
+</div>
+
+---
+
+<div class="sym-block sym-function" data-name="XPLMAvionicsInjectScript" data-type="function" markdown="1">
+
+## XPLMAvionicsInjectScript { .symbol-title }
+
+<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM440</span>
+
+Executes a JavaScript snippet in the main frame of a browser-content-type
+avionics device. The script has access to the same xplane.* namespace exposed
+to the page. If injected before the page has finished loading, it may run
+against an empty document. Has no effect on non-browser devices.
+
+```cpp
+XPLM_API void       XPLMAvionicsInjectScript(
+                         XPLMAvionicsID       inAvionicsID,
+                         const char *         inScript
+                    );
+```
+
+</div>
+
+---
+
+<div class="sym-block sym-callback" data-name="XPLMAvionicsBrowserCallback_f" data-type="callback" markdown="1">
+
+## XPLMAvionicsBrowserCallback_f { .symbol-title }
+
+<span class="sym-badge badge-cb">callback</span> <span class="sym-badge badge-version">XPLM440</span>
+
+Handler invoked when the page in a browser-content-type avionics device calls
+xplane.<name>(arg). You receive the device, the argument serialised as a
+JSON string, and your refcon; return a JSON string (or NULL) that the JS
+Promise resolves to.
+
+```cpp
+typedef const char * (* XPLMAvionicsBrowserCallback_f)(
+                         XPLMAvionicsID       inAvionicsID,
+                         const char *         inJSON,
+                         void *               inRefcon
+                    );
+```
+
+</div>
+
+---
+
+<div class="sym-block sym-function" data-name="XPLMAvionicsAddBrowserFunction" data-type="function" markdown="1">
+
+## XPLMAvionicsAddBrowserFunction { .symbol-title }
+
+<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM440</span>
+
+Registers a callback that the page running in a browser-content-type avionics
+device can invoke as xplane.<inName>(arg). The JS call returns a Promise
+that resolves to the value your XPLMAvionicsBrowserCallback_f returns (parsed
+as JSON). Registering the same name again replaces the previous callback. Each
+device has its own independent xplane.* namespace. Has no effect on non-browser
+devices.
+
+```cpp
+XPLM_API void       XPLMAvionicsAddBrowserFunction(
+                         XPLMAvionicsID       inAvionicsID,
+                         const char *         inName,
+                         XPLMAvionicsBrowserCallback_f inFunction,
+                         void *               inRefcon
+                    );
+```
+
+</div>
+
+---
+
+<div class="sym-block sym-function" data-name="XPLMSetObjectAvionics" data-type="function" markdown="1">
+
+## XPLMSetObjectAvionics { .symbol-title }
+
+<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM440</span>
+
+Glues a cockpit device you created with XPLMCreateAvionicsEx() onto a 3D object you loaded with XPLMLoadObject(), so that the device's screen is drawn on that object - typically one you draw in the world using the instancing API (XPLMCreateInstance()).
+
+The device is matched to the object's screen by ID: the object must declare an `ATTR_cockpit_device` with the same device ID string you passed to XPLMCreateAvionicsEx(). The binding is a property of the object itself, so every instance you draw from that object shows the same device. You may only bind devices you created yourself, not X-Plane's built-in devices.
+
+Brightness on the object follows your device's own brightness callback, independent of any aircraft electrical system.
+
+Returns 1 if the object had a matching device screen and the binding succeeded, or 0 otherwise.
+
+```cpp
+XPLM_API int        XPLMSetObjectAvionics(
+                         XPLMObjectRef        inObject,
+                         XPLMAvionicsID       inAvionics
+                    );
+```
+
+</div>
+
+---
+
+<div class="sym-block sym-function" data-name="XPLMClearObjectAvionics" data-type="function" markdown="1">
+
+## XPLMClearObjectAvionics { .symbol-title }
+
+<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM440</span>
+
+Removes a binding previously made with XPLMSetObjectAvionics(), restoring the object's device screen to black and detaching its click handler. Bindings are also cleared automatically when you destroy the device with XPLMDestroyAvionics().
+
+```cpp
+XPLM_API void       XPLMClearObjectAvionics(
+                         XPLMObjectRef        inObject,
+                         XPLMAvionicsID       inAvionics
                     );
 ```
 

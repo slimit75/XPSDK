@@ -39,6 +39,9 @@ The latitude and longitude parameters specify the location the object will be us
 allows for scenery packages to only provide objects to certain local locations. Only objects that are
 allowed at the latitude/longitude you provide will be returned.
 
+The enumerator is fully synchronous: it is called once per matching object, and all calls complete before
+XPLMLookupObjects returns.
+
 ```cpp
 XPLM_API int        XPLMLookupObjects(
                          const char *         inPath,

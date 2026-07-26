@@ -48,6 +48,11 @@ a consistent interface across platforms that does not necessarily match the Maci
 user interface guidelines.  There is not yet a way for plugins to access the Macintosh
 control keys without using #ifdefed code.
 
+The down and up flags describe the phase of a key *event* and are only meaningful when
+these flags arrive with a keystroke.  When you poll the live modifier state with
+XPLMGetModifierKeys(), only the modifier bits (shift, option/alt, command/control, caps lock)
+are ever set --- the down/up flags are never returned by that call.
+
 <div class="enum-table" markdown="1">
 
 | Name | Value | Description |
@@ -57,6 +62,7 @@ control keys without using #ifdefed code.
 | xplm_ControlFlag | 4 | The control key is down |
 | xplm_DownFlag | 8 | The key is being pressed down |
 | xplm_UpFlag | 16 | The key is being released |
+| xplm_CapsLockFlag | 32 | The caps lock key is engaged.  Only reported by XPLMGetModifierKeys(); never set on a key event. |
 
 </div>
 
@@ -167,9 +173,9 @@ X-Plane itself
 
 <span class="sym-badge badge-define">define</span>
 
-The current XPLM revision is 4.3.0 (430).
+The current XPLM revision is 4.4.0 (440).
 
-`#define kXPLM_Version (430)`
+`#define kXPLM_Version (440)`
 
 </div>
 

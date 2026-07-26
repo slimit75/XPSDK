@@ -141,7 +141,7 @@ XPLM_API void       XPLMEnableFeature(
 <span class="sym-badge badge-fn">function</span>
 
 This routine calls your enumerator callback once for each feature that this running version of X-Plane supports.
-Use this routine to determine all of the features that X-Plane can support.
+Use this routine to determine all of the features that X-Plane can support. Callbacks are synchronous.
 
 ```cpp
 XPLM_API void       XPLMEnumerateFeatures(

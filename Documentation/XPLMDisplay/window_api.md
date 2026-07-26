@@ -215,17 +215,46 @@ typedef int (* XPLMHandleMouseWheel_f)(
 
 ---
 
-<div class="sym-block sym-callback" data-name="XPLMBrowserNavigation_f" data-type="callback" markdown="1">
+<div class="sym-block sym-callback" data-name="XPLMBrowserLoadFinished_f" data-type="callback" markdown="1">
 
-## XPLMBrowserNavigation_f { .symbol-title }
+## XPLMBrowserLoadFinished_f { .symbol-title }
 
-<span class="sym-badge badge-cb">callback</span> <span class="sym-badge badge-version">XPLMPG1</span>
+<span class="sym-badge badge-cb">callback</span> <span class="sym-badge badge-version">XPLM440</span>
+
+Called for a browser-content-type window when its main frame finishes loading a
+page. NOT a success guarantee --a rendered HTTP error page (e.g. a 404) also
+finishes here. A navigation that fails before the page renders fires
+XPLMBrowserLoadError_f instead. Set this via browserLoadFinishedFunc in
+XPLMCreateWindow_t.
 
 ```cpp
-typedef void (* XPLMBrowserNavigation_f)(
+typedef void (* XPLMBrowserLoadFinished_f)(
                          XPLMWindowID         inWindow,
                          const char *         inURL,
-                         int                  inSuccess,
+                         void *               inRefcon
+                    );
+```
+
+</div>
+
+---
+
+<div class="sym-block sym-callback" data-name="XPLMBrowserLoadError_f" data-type="callback" markdown="1">
+
+## XPLMBrowserLoadError_f { .symbol-title }
+
+<span class="sym-badge badge-cb">callback</span> <span class="sym-badge badge-version">XPLM440</span>
+
+Called for a browser-content-type window when a navigation fails at the network
+level (bad URL, host unreachable, TLS failure, file not found). inError describes
+the failure. May be followed by XPLMBrowserLoadFinished_f for a substitute error
+page, so treat this as the authoritative signal that the navigation to inURL
+failed. Set this via browserLoadErrorFunc in XPLMCreateWindow_t.
+
+```cpp
+typedef void (* XPLMBrowserLoadError_f)(
+                         XPLMWindowID         inWindow,
+                         const char *         inURL,
                          const char *         inError,    /* Can be NULL */
                          void *               inRefcon
                     );
@@ -334,7 +363,8 @@ typedef struct {
      XPLMWindowLayer           layer;
      XPLMHandleMouseClick_f    handleRightClickFunc;
      XPLMWindowContentType     windowContentType;
-     XPLMBrowserNavigation_f   browserNavigationFunc;
+     XPLMBrowserLoadFinished_f browserLoadFinishedFunc;
+     XPLMBrowserLoadError_f    browserLoadErrorFunc;
 } XPLMCreateWindow_t;
 ```
 
@@ -354,9 +384,8 @@ actual structure you used.  Also, you must provide functions for every callback-
 not leave them null!  (If you do not support the cursor or mouse wheel, use functions that
 return the default values.)
 
-NOTE: Lua scripts must use XLuaCreateImguiWindow() or XLuaCreateBrowserWindow()
-instead of XPLMCreateWindowEx -- those wrappers pre-wire the correct
-content type and input handlers for their respective window flavours.
+NOTE: For an imgui-drawn window, Lua scripts should use XLuaCreateImguiWindow()
+instead; it opens and closes the imgui frame for you and wires the input handlers.
 
 ```cpp
 XPLM_API XPLMWindowIDXPLMCreateWindowEx(
@@ -415,8 +444,8 @@ XPLM_API XPLMWindowIDXPLMCreateWindow(
 This routine destroys a window.  The window's callbacks are not called after this call.
 Keyboard focus is removed from the window before destroying it.
 
-NOTE: Lua scripts must use XLuaDestroyImguiWindow() or XLuaDestroyBrowserWindow()
-instead of XPLMDestroyWindow.
+NOTE: A window created with XLuaCreateImguiWindow() must be destroyed with
+XLuaDestroyImguiWindow(), not this function, so its captured Lua callbacks are released.
 
 ```cpp
 XPLM_API void       XPLMDestroyWindow(
@@ -432,7 +461,7 @@ XPLM_API void       XPLMDestroyWindow(
 
 ## XPLMWindowSetURL { .symbol-title }
 
-<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLMPG1</span>
+<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM440</span>
 
 Loads a URL into a browser-content-type window. Safe to call before the
 underlying webview has finished initialising; the load is queued and
@@ -455,7 +484,7 @@ XPLM_API void       XPLMWindowSetURL(
 
 ## XPLMWindowRefresh { .symbol-title }
 
-<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLMPG1</span>
+<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM440</span>
 
 Reloads the current URL in a browser-content-type window. Pass true for
 `inIgnoreCache` to bypass the HTTP cache (the equivalent of a
@@ -476,7 +505,7 @@ XPLM_API void       XPLMWindowRefresh(
 
 ## XPLMWindowInjectScript { .symbol-title }
 
-<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLMPG1</span>
+<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM440</span>
 
 Executes a JavaScript snippet in the browser window's main frame. The
 script is run once; it has access to the same `xplane.*` namespace
@@ -499,7 +528,7 @@ XPLM_API void       XPLMWindowInjectScript(
 
 ## XPLMBrowserCallback_f { .symbol-title }
 
-<span class="sym-badge badge-cb">callback</span> <span class="sym-badge badge-version">XPLMPG1</span>
+<span class="sym-badge badge-cb">callback</span> <span class="sym-badge badge-version">XPLM440</span>
 
 ```cpp
 typedef const char * (* XPLMBrowserCallback_f)(
@@ -517,7 +546,7 @@ typedef const char * (* XPLMBrowserCallback_f)(
 
 ## XPLMWindowAddBrowserFunction { .symbol-title }
 
-<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLMPG1</span>
+<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM440</span>
 
 Registers a callback that the page running in this browser window can
 invoke as `xplane.<inName>(arg)`. The JS call returns a Promise that
@@ -634,8 +663,8 @@ typedef void (* XPLMReceiveMonitorBoundsGlobal_f)(
 
 <span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM300</span>
 
-This routine immediately calls you back with the bounds (in boxels) of each full-screen X-Plane window
-within the X-Plane global desktop space.
+This routine immediately and synchronously calls you back with the bounds (in boxels) of each full-screen X-Plane window
+within the X-Plane global desktop space, one callback per window.
 Note that if a monitor is *not* covered by an X-Plane window, you cannot get its bounds this way. Likewise,
 monitors with only an X-Plane window (not in full-screen mode) will not be included.
 
@@ -691,8 +720,8 @@ typedef void (* XPLMReceiveMonitorBoundsOS_f)(
 
 <span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM300</span>
 
-This routine immediately calls you back with the bounds (in pixels) of each monitor within the operating system's
-global desktop space. Note that unlike XPLMGetAllMonitorBoundsGlobal(), this may include monitors that have no X-Plane window on them.
+This routine immediately and synchronously calls you back with the bounds (in pixels) of each monitor within the operating system's
+global desktop space, one callback per monitor. Note that unlike XPLMGetAllMonitorBoundsGlobal(), this may include monitors that have no X-Plane window on them.
 
 Note that this function's monitor indices match those provided by XPLMGetAllMonitorBoundsGlobal(), but the coordinates are different
 (since the X-Plane global desktop may not match the operating system's global desktop, and one X-Plane boxel may be larger than one pixel).
@@ -760,6 +789,30 @@ XPLM_API void       XPLMGetMouseLocationGlobal(
                          int *                outX,    /* Can be NULL */
                          int *                outY    /* Can be NULL */
                     );
+```
+
+</div>
+
+---
+
+<div class="sym-block sym-function" data-name="XPLMGetModifierKeys" data-type="function" markdown="1">
+
+## XPLMGetModifierKeys { .symbol-title }
+
+<span class="sym-badge badge-fn">function</span> <span class="sym-badge badge-version">XPLM440</span>
+
+Returns the modifier keys that are being held down *right now*, as a bitfield of XPLMKeyFlags.
+Unlike the modifier flags delivered with a key event, this reflects the live keyboard state at the
+moment of the call, so it can be used to make mouse clicks modifier-sensitive (e.g. shift-click) or
+to react to a modifier changing during drawing (e.g. show alignment guides while shift is held).
+
+Only the modifier bits are ever set: xplm_ShiftFlag, xplm_OptionAltFlag, xplm_ControlFlag and
+xplm_CapsLockFlag.  The xplm_DownFlag and xplm_UpFlag bits (which describe a key event's phase) are
+never returned. As elsewhere in the SDK, the Command key on macOS is folded into xplm_ControlFlag
+rather than reported separately.
+
+```cpp
+XPLM_API XPLMKeyFlagsXPLMGetModifierKeys(void);
 ```
 
 </div>

@@ -16,8 +16,9 @@ uint32_t in little-endian byte order (R is the low byte). The vertex
 stride passed in `XPLMMesh_t::vertices` must be 5 floats per vertex.
 
 Color and alpha: vertex colors and texture pixels are interpreted as
-**pre-multiplied alpha**. If you have straight-alpha source data, multiply
-RGB by alpha (and divide by 255 if integers) before submitting.
+**straight (non-pre-multiplied) alpha** and blended accordingly. Submit
+ImGui's `ImDrawData` verts and font atlas as-is (no premultiply) -- this
+matches ImGui's own defaults.
 
 Sampler: bilinear filter, clamp-to-edge in both dimensions, no mipmaps.
 UV coordinates outside [0,1] sample the edge texels (no wrap).

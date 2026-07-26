@@ -176,16 +176,15 @@ XPLM_API void       XPLMScissorSet(
 
 ---
 
-<div class="sym-block sym-function" data-name="XPLMScissorShrink" data-type="function" markdown="1">
+<div class="sym-block sym-function" data-name="XPLMScissorIntersect" data-type="function" markdown="1">
 
-## XPLMScissorShrink { .symbol-title }
+## XPLMScissorIntersect { .symbol-title }
 
 <span class="sym-badge badge-fn">function</span>
 
-This function insets (shrinks) the current scissor rectangle by the
-specified amounts on each side. The result is the intersection of the
-current scissor rectangle and the new inset rectangle, so the drawable area
-can only get smaller. This is useful for nested clipping.
+This function sets the scissors box to the intersection of the existing
+scissors box. The result is always a same or smaller drawable area.
+This is useful for nested clipping.
 
 - top: inset from the top edge, in pixels.
 - left: inset from the left edge, in pixels.
@@ -193,7 +192,7 @@ can only get smaller. This is useful for nested clipping.
 - right: inset from the right edge, in pixels.
 
 ```cpp
-XPLM_API void       XPLMScissorShrink(
+XPLM_API void       XPLMScissorIntersect(
                          int                  top,
                          int                  left,
                          int                  bottom,
