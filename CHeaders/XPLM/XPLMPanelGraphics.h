@@ -56,8 +56,9 @@ extern "C" {
  ***************************************************************************/
 /*
  * These routines draw 2-D vector primitives: lines, line strips, line loops,
- * filled polygons, and quad strips. Each primitive type has up to four
- * variants:
+ * filled polygons, and quad strips.
+ * 
+ * Line-based primitives (Lines, LineStrip, LineLoop) have four variants:
  * 
  * - Base variant: uniform color, default line width.
  * - WithWidth variant: uniform color, caller-specified line width.
@@ -66,9 +67,11 @@ extern "C" {
  * - "c" + WithWidth variant: per-vertex color and caller-specified line
  *   width.
  * 
- * Line-based primitives (Lines, LineStrip, LineLoop) also have a Stipple
- * variant that draws dashed lines with a caller-specified dash length and
- * line width.
+ * They also have a Stipple variant that draws dashed lines with a
+ * caller-specified dash length and line width.
+ * 
+ * Filled primitives (Polygon, Quadstrip) have no line width, so they come in
+ * only the base and "c" variants.
  *
  */
 
@@ -376,22 +379,6 @@ XPLM_API void       XPLMPolygon(
                          int                  count);
 
 /*
- * XPLMPolygonWithWidth
- * 
- * This function draws a filled convex polygon with a caller-specified outline
- * width. The interior is filled and an outline is drawn at the given width.
- * 
- * - lineWidth: the outline width in pixels.
- *
- */
-/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
-XPLM_API void       XPLMPolygonWithWidth(
-                         uint32_t             color,
-                         float                lineWidth,
-                         const XPLMVertex_t   vertices[],
-                         int                  count);
-
-/*
  * XPLMPolygonc
  * 
  * This function draws a filled convex polygon with per-vertex colors. Colors
@@ -400,21 +387,6 @@ XPLM_API void       XPLMPolygonWithWidth(
  */
 /* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMPolygonc(
-                         const XPLMVertexColor_t vertices[],
-                         int                  count);
-
-/*
- * XPLMPolygoncWithWidth
- * 
- * This function draws a filled convex polygon with per-vertex colors and a
- * caller-specified outline width.
- * 
- * - lineWidth: the outline width in pixels.
- *
- */
-/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
-XPLM_API void       XPLMPolygoncWithWidth(
-                         float                lineWidth,
                          const XPLMVertexColor_t vertices[],
                          int                  count);
 
@@ -437,22 +409,6 @@ XPLM_API void       XPLMQuadstrip(
                          int                  count);
 
 /*
- * XPLMQuadstripWithWidth
- * 
- * This function draws a quad strip with a caller-specified outline width.
- * Vertex interpretation is the same as XPLMQuadstrip.
- * 
- * - lineWidth: the outline width in pixels.
- *
- */
-/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
-XPLM_API void       XPLMQuadstripWithWidth(
-                         uint32_t             color,
-                         float                lineWidth,
-                         const XPLMVertex_t   vertices[],
-                         int                  count);
-
-/*
  * XPLMQuadstripc
  * 
  * This function draws a quad strip with per-vertex colors. Vertex
@@ -462,21 +418,6 @@ XPLM_API void       XPLMQuadstripWithWidth(
  */
 /* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMQuadstripc(
-                         const XPLMVertexColor_t vertices[],
-                         int                  count);
-
-/*
- * XPLMQuadstripcWithWidth
- * 
- * This function draws a quad strip with per-vertex colors and a
- * caller-specified outline width.
- * 
- * - lineWidth: the outline width in pixels.
- *
- */
-/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
-XPLM_API void       XPLMQuadstripcWithWidth(
-                         float                lineWidth,
                          const XPLMVertexColor_t vertices[],
                          int                  count);
 #endif /* XPLM440 */
@@ -836,6 +777,11 @@ typedef void * XPLMTextureAtlasRef;
  * 
  * A vertex for textured mesh drawing. Combines a position in panel
  * coordinates with normalized texture coordinates within the image.
+ * 
+ * Texture coordinates are always relative to the image you are drawing, never
+ * to the atlas sheet it happens to be packed into. This is true for both
+ * XPLMTextureAtlasDrawMesh and XPLMTextureSourceDrawMesh, so the same vertex
+ * array means the same thing to either one.
  *
  */
 typedef struct {
@@ -1006,24 +952,6 @@ XPLM_API int        XPLMTextureAtlasGetImageHeight(
                          int                  inImageIndex);
 
 /*
- * XPLMTextureAtlasGetImageUVMap
- * 
- * This function returns the UV coordinates of an image within the atlas
- * texture. This is useful for custom mesh rendering with
- * XPLMTextureAtlasDrawMesh.
- * 
- * - outUV: a pointer to an array of 4 floats that receives [s1, t1, s2, t2],
- *   where (s1, t1) is the bottom-left corner and (s2, t2) is the top-right
- *   corner in atlas texture space.
- *
- */
-/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
-XPLM_API void       XPLMTextureAtlasGetImageUVMap(
-                         XPLMTextureAtlasRef  inTextureAtlas,
-                         int                  inImageIndex,
-                         float                outUV[4]);
-
-/*
  * XPLMTextureAtlasDrawAt
  * 
  * This function draws an atlas image at its native resolution. The image is
@@ -1127,6 +1055,15 @@ XPLM_API void       XPLMTextureAtlasDrawScaled(
  * Each vertex specifies both a panel-space position and a normalized texture
  * coordinate within the image (0.0 to 1.0). This gives you full control over
  * how the image is mapped onto geometry.
+ * 
+ * Texture coordinates are relative to the image, not to the atlas sheet; the
+ * mapping onto wherever the image was packed is applied for you, exactly as
+ * it is for the other atlas drawing routines. One consequence is that the
+ * same vertex array can be drawn with any inImageIndex - you do not have to
+ * rebuild the mesh to switch images.
+ * 
+ * Coordinates outside 0.0 to 1.0 are not clamped, and will sample whatever
+ * neighboring image shares the atlas sheet. Keep them in range.
  * 
  * - inTintColor: a color that is multiplied with the texture.
  * - vertices: an array of XPLMTextureVertex_t vertices defining the triangle
@@ -1335,15 +1272,15 @@ XPLM_API void       XPLMScissorPop(void);
  * This function sets an absolute scissor rectangle. Only pixels within this
  * rectangle are drawn; everything outside is clipped.
  * 
- * - top, left, bottom, right: the scissor bounds in panel coordinates.
+ * - left, top, right, bottom: the scissor bounds in panel coordinates.
  *
  */
 /* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMScissorSet(
-                         int                  top,
                          int                  left,
-                         int                  bottom,
-                         int                  right);
+                         int                  top,
+                         int                  right,
+                         int                  bottom);
 
 /*
  * XPLMScissorIntersect
@@ -1352,18 +1289,18 @@ XPLM_API void       XPLMScissorSet(
  * scissors box. The result is always a same or smaller drawable area. This is
  * useful for nested clipping.
  * 
- * - top: inset from the top edge, in pixels.
  * - left: inset from the left edge, in pixels.
- * - bottom: inset from the bottom edge, in pixels.
+ * - top: inset from the top edge, in pixels.
  * - right: inset from the right edge, in pixels.
+ * - bottom: inset from the bottom edge, in pixels.
  *
  */
 /* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMScissorIntersect(
-                         int                  top,
                          int                  left,
-                         int                  bottom,
-                         int                  right);
+                         int                  top,
+                         int                  right,
+                         int                  bottom);
 
 /*
  * XPLMBeginSetupStencilMask
@@ -1841,17 +1778,22 @@ XPLM_API void       XPLMSVTDisplayDrawIn(
  * PANEL GRAPHICS map display
  ***************************************************************************/
 /*
- * These routines let you draw the base map for a navigation display (ND) or 
+ * These routines let you draw the base map for a navigation display (ND) or
  * multi-function display (MFD) into your avionics panel. The base map
- * provides  layers for terrain, topography, bodies of water, EGPWS terrain
- * warnings,  airport taxi layouts, NEXRAD and cloud tops. These are drawn
- * with a  stereographic projectionwhere the pole is the current user aircraft
- * position.
+ * provides layers for terrain, topography, bodies of water, EGPWS terrain
+ * warnings, airport taxi layouts, NEXRAD and cloud tops. These are drawn with
+ * a transverse Mercator projection centered near the map's datum.
  * 
  * Create a map display with XPLMCreateMapDisplay and draw it with
  * XPLMMapDisplayDrawIn. Each map instance manages its own terrain tile
  * loading and GPU state, so you can have multiple independent views (e.g.
  * pilot and copilot PFDs with different layers visible).
+ * 
+ * To draw your own symbology on top - airports, a flight plan, traffic - use
+ * XPLMMapDisplayProject to turn a latitude/longitude into a pixel position,
+ * and XPLMMapDisplayUnproject to turn a click back into a latitude/longitude.
+ * Both take the same XPLMMapDrawInfo_t you draw with, so they describe
+ * exactly the projection that draw call produces.
  * 
  * The base map works on any aircraft, regardless of whether the stock cockpit
  * has an FMS or other avionics installed.
@@ -1931,9 +1873,26 @@ typedef int XPLMEGPWSStyle;
 
 /*
  * XPLMMapCustomData_t
+ * 
+ * Per-frame description of what a map display should show: where it is
+ * centered, how it is oriented, how far it reaches, and what the terrain
+ * layers should shade against.
+ * 
+ * Two fields set the scale, and they are deliberately a matching pair:
+ * roseRadius is the distance from the center of the map out to the compass
+ * rose in pixels, and mapRange is that same distance in nautical miles. So
+ * setting mapRange to 40 puts the rose edge 40 nm from the aircraft, exactly
+ * like the range knob on a real EFIS control panel - and a centered rose
+ * therefore spans 80 nm across.
+ * 
+ * Set structSize to the size of your struct so that future SDK versions can
+ * add fields without breaking existing plugins.
  *
  */
 typedef struct {
+
+    /* Set to sizeof(XPLMMapCustomData_t).                                        */
+     int                       structSize;
 
     /* datum lat (degrees).                                                       */
      float                     datLat;
@@ -1947,10 +1906,10 @@ typedef struct {
     /* map center y coordinate (pixels).                                          */
      int                       ctrY;
 
-    /* outer compass rose diameter (pixels).                                      */
-     int                       roseDiameter;
+    /* center of the map out to the compass rose (pixels).                        */
+     int                       roseRadius;
 
-    /* map range center to compass rose (nautical miles).                         */
+    /* center of the map out to the compass rose (nautical miles).                */
      float                     mapRange;
 
     /* map orientation (0=north up, 1=Track up, 2=Hdg up, 3=custom).              */
@@ -1968,8 +1927,8 @@ typedef struct {
     /* ownship gear status (1=gear down).                                         */
      int                       gearDown;
 
-    /* if map orientation is custom, the rotation in degrees counter-clockwise    *
-     * from true north.                                                           */
+    /* if map orientation is custom, the true heading that points up (so 90 puts  *
+     * east at the top and true north to the left).                               */
      float                     trueRotation;
 
     /* altitude in feet of the nearest runway, used for EGPWS terrain display.    */
@@ -1992,7 +1951,7 @@ typedef struct {
  */
 typedef struct {
 
-    /* Set to sizeof(XPLMCreateSVT_t).                                            */
+    /* Set to sizeof(XPLMCreateMap_t).                                            */
      int                       structSize;
 
     /* 0 for pilot-side GPS position, 1 for copilot-side GPS position.            */
@@ -2007,6 +1966,41 @@ typedef struct {
  *
  */
 typedef void * XPLMMapDisplayRef;
+
+/*
+ * XPLMMapDrawInfo_t
+ * 
+ * Which layers a map shows and where on the panel it goes.
+ * 
+ * Pass the same XPLMMapDrawInfo_t and the same XPLMMapCustomData_t to
+ * XPLMMapDisplayDrawIn and to the projection routines, and the projection you
+ * query is provably the projection you drew - so your symbology cannot end up
+ * a frame or a zoom step out of step with the terrain under it.
+ * 
+ * Set structSize to the size of your struct so that future SDK versions can
+ * add fields without breaking existing plugins.
+ *
+ */
+typedef struct {
+
+    /* Set to sizeof(XPLMMapDrawInfo_t).                                          */
+     int                       structSize;
+
+    /* Bitwise OR of XPLMMapLayers flags to show.                                 */
+     XPLMMapLayers             layers;
+
+    /* Bounding rectangle in panel coordinates.                                   */
+     int                       left;
+
+    /* Bounding rectangle in panel coordinates.                                   */
+     int                       top;
+
+    /* Bounding rectangle in panel coordinates.                                   */
+     int                       right;
+
+    /* Bounding rectangle in panel coordinates.                                   */
+     int                       bottom;
+} XPLMMapDrawInfo_t;
 
 /*
  * XPLMCreateMapDisplay
@@ -2039,32 +2033,143 @@ XPLM_API void       XPLMDestroyMapDisplay(
  * XPLMMapDisplayDrawIn
  * 
  * This function renders the map display directly into the active panel
- * surface within the specified rectangular region. Map sets up its own
- * stereographic projection to fit the rectangle, so no transform stack
- * manipulation is needed.
+ * surface within the rectangle given by info. Map sets up its own projection
+ * to fit that rectangle, so no transform stack manipulation is needed.
  * 
- * The layers parameter controls which visual layers are rendered for this
- * draw call. Pass a bitwise OR of XPLMMapLayers flags. Note that some layers
- * are mutually exclusive, such as NEXRAD and EGPWS or NEXRAD and IR.  The
- * airport details layer is only visible at very close zoom levels.
+ * info->layers controls which visual layers are rendered. Note that some
+ * layers are mutually exclusive, such as NEXRAD and EGPWS or NEXRAD and IR.
+ * The airport details layer is only visible at very close zoom levels.
  * 
  * This function must be called from within an avionics drawing callback. If
  * terrain tiles have not finished loading yet, this function does nothing.
  * 
- * - map: the map display handle.
- * - layers: bitwise OR of XPLMMapLayers flags to enable for this draw call.
- * - left, top, right, bottom: the bounding rectangle in panel coordinates.
+ * dataOverrides may be NULL, in which case the map follows the sim's own
+ * navigation display: centered on the user aircraft in the middle of the
+ * rectangle, rose radius half the shorter side of it, range taken from the
+ * EFIS range knob, and track-up or north-up according to the sim's map mode.
+ * The pilotIndex you created the map with selects which side's range and
+ * altitude are used.
  *
  */
 /* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMMapDisplayDrawIn(
                          XPLMMapDisplayRef    map,
-                         XPLMMapLayers        layers,
-                         int                  left,
-                         int                  top,
-                         int                  right,
-                         int                  bottom,
-                         XPLMMapCustomData_t* dataOverrides);         /* Can be NULL */
+                         XPLMMapDrawInfo_t *  info,
+                         XPLMMapCustomData_t * dataOverrides);         /* Can be NULL */
+
+/*
+ * XPLMMapDisplayProject
+ * 
+ * Turns a latitude/longitude into a position in panel coordinates, for the
+ * map that info describes. This is the inverse of XPLMMapDisplayUnproject.
+ * 
+ * Pass the same info you draw that map with and you get the projection that
+ * draw call produces, whether you call this before or after
+ * XPLMMapDisplayDrawIn. So the usual pattern - project your symbols, draw the
+ * map, then draw the symbols on top - lines up exactly, with no need to cache
+ * anything between frames.
+ * 
+ * Unlike XPLMMapDisplayDrawIn, this does not have to be called from a drawing
+ * callback; it is equally valid from a click handler or a flight loop.
+ * 
+ * Returns 1 on success. Returns 0, leaving outX and outY untouched, if the
+ * map's terrain tiles have not loaded yet or if the point has no position on
+ * this map.
+ * 
+ * Note that the returned coordinates are in the same space as info's
+ * rectangle, and like that rectangle they do not account for the panel
+ * graphics transform stack.
+ * 
+ * Passing NULL for dataOverrides projects the sim's own navigation display
+ * view, the same one XPLMMapDisplayDrawIn draws with NULL.
+ *
+ */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
+XPLM_API int        XPLMMapDisplayProject(
+                         XPLMMapDisplayRef    map,
+                         XPLMMapDrawInfo_t *  info,
+                         XPLMMapCustomData_t * dataOverrides,          /* Can be NULL */
+                         double               latitude,
+                         double               longitude,
+                         float *              outX,
+                         float *              outY);
+
+/*
+ * XPLMMapDisplayUnproject
+ * 
+ * Turns a position in panel coordinates back into a latitude/longitude, for
+ * the map that info describes. This is the inverse of XPLMMapDisplayProject.
+ * 
+ * Use this to turn a touch or click on your map into a place in the world -
+ * for picking a waypoint, or reading out the position under the cursor.
+ * 
+ * Unlike XPLMMapDisplayDrawIn, this does not have to be called from a drawing
+ * callback; it is equally valid from a click handler or a flight loop.
+ * 
+ * Returns 1 on success. Returns 0, leaving outLatitude and outLongitude
+ * untouched, if the map's terrain tiles have not loaded yet or if the point
+ * does not correspond to anywhere on the earth.
+ * 
+ * Passing NULL for dataOverrides projects the sim's own navigation display
+ * view, the same one XPLMMapDisplayDrawIn draws with NULL.
+ *
+ */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
+XPLM_API int        XPLMMapDisplayUnproject(
+                         XPLMMapDisplayRef    map,
+                         XPLMMapDrawInfo_t *  info,
+                         XPLMMapCustomData_t * dataOverrides,          /* Can be NULL */
+                         float                x,
+                         float                y,
+                         double *             outLatitude,
+                         double *             outLongitude);
+
+/*
+ * XPLMMapDisplayScaleMeter
+ * 
+ * Returns how many pixels correspond to one meter at a given point on the map
+ * that info describes. Use it to size symbols and range rings so they stay
+ * correct as the range changes.
+ * 
+ * Returns 0 if the map's terrain tiles have not loaded yet.
+ * 
+ * Passing NULL for dataOverrides projects the sim's own navigation display
+ * view, the same one XPLMMapDisplayDrawIn draws with NULL.
+ *
+ */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
+XPLM_API float      XPLMMapDisplayScaleMeter(
+                         XPLMMapDisplayRef    map,
+                         XPLMMapDrawInfo_t *  info,
+                         XPLMMapCustomData_t * dataOverrides,          /* Can be NULL */
+                         float                x,
+                         float                y);
+
+/*
+ * XPLMMapDisplayGetNorthHeading
+ * 
+ * Returns the heading, in degrees clockwise from straight up on the display,
+ * at which true north lies at a given point on the map that info describes.
+ * ADD it to a true heading to get the angle to draw that heading at.
+ * 
+ * This accounts both for the map's own rotation - a heading-up map is turned
+ * to put the aircraft's nose at the top - and for the projection's
+ * convergence, which tilts north away from vertical as you move away from the
+ * map's center.
+ * 
+ * Returns 0 if the map's terrain tiles have not loaded yet.
+ * 
+ * Passing NULL for dataOverrides projects the sim's own navigation display
+ * view, the same one XPLMMapDisplayDrawIn draws with NULL.
+ *
+ */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
+XPLM_API float      XPLMMapDisplayGetNorthHeading(
+                         XPLMMapDisplayRef    map,
+                         XPLMMapDrawInfo_t *  info,
+                         XPLMMapCustomData_t * dataOverrides,          /* Can be NULL */
+                         float                x,
+                         float                y);
 
 /*
  * XPLMMapDisplayGetTerrainAltitudes
@@ -2142,8 +2247,9 @@ XPLM_API int        XPLMMapDisplayGetTerrainAltitudes(
  */
 typedef struct {
 
-    /* Texture handle from XPLMCreateTexture, or any pointer the host returned for*
-     * a texture.                                                                 */
+    /* Texture handle from XPLMCreateTexture. That is the ONLY valid source - this*
+     * is not a general texture handle, and passing anything else (an             *
+     * XPLMTextureAtlasRef, say) is undefined behavior, not a no-op.              */
      void *                    tex_ref;
 
     /* Clip rect: {left, top, right, bottom} in window-local top-left coords.     */

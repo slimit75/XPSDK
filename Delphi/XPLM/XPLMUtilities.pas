@@ -194,7 +194,7 @@ TYPE
                                         inFirstReturn       : Integer;
                                         outFileNames        : XPLMString;
                                         inFileNameBufSize   : Integer;
-                                        outIndices          : XPLMString;    { Can be nil }
+                                        outIndices          : PXPLMString;    { Can be nil }
                                         inIndexCount        : Integer;
                                         outTotalFiles       : PInteger;    { Can be nil }
                                         outReturnedFiles    : PInteger) : Integer;    { Can be nil }
