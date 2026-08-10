@@ -554,10 +554,17 @@ XPLM_API void       XPLMDestroyFont(
  * they were added.
  * 
  * - ttf_path: a file system path to a .ttf or .otf font file.
+ * 
+ * Returns 1 if the face was loaded and added, or 0 if it could not be. When
+ * this returns 0 the font is left exactly as it was, so you can try another
+ * path, and a message explaining what went wrong is sent to your error
+ * callback (see XPLMSetErrorCallback) and written to Log.txt.
+ * 
+ * Drawing with a font that has no faces draws nothing; it is not an error.
  *
  */
 /* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
-XPLM_API void       XPLMFontAddFace(
+XPLM_API int        XPLMFontAddFace(
                          XPLMFontHandle       font,
                          char const*          ttf_path);
 
@@ -1170,8 +1177,14 @@ XPLM_API void       XPLMTextureSourceDrawMesh(
  * of all drawing. The scissor rectangle clips drawing to a rectangular
  * region. The stencil mask clips drawing to an arbitrary shape.
  * 
- * Each state type has a push/pop stack. Always push before modifying state
- * and pop to restore the previous state when you are done.
+ * The transform and the scissor rectangle each have a push/pop stack. Always
+ * push before modifying either one and pop to restore the previous state when
+ * you are done.
+ * 
+ * The stencil has no stack. Instead the stencil buffer holds up to eight
+ * independent one-bit masks, and you select which of them clips your drawing
+ * by calling XPLMUseStencilMask as often as you like. X-Plane restores the
+ * stencil state for you at the end of your drawing callback.
  *
  */
 
@@ -1310,9 +1323,17 @@ XPLM_API void       XPLMScissorIntersect(
  * shapes that define your mask region, then call XPLMEndSetupStencilMask to
  * finish.
  * 
+ * The stencil buffer is eight bits wide, so you can record up to eight
+ * independent masks and pick among them later with XPLMUseStencilMask - one
+ * bit per mask - without having to re-draw them.
+ * 
  * - bits: the stencil bit pattern to write into the stencil buffer where
  *   geometry is drawn.
  * - mask: a bitmask selecting which stencil bits are written.
+ * 
+ * Both parameters must be in the range 0 to 255, and every bit set in bits
+ * must also be set in mask - a bit outside the mask can never be written.
+ * Stencil testing must be off (see XPLMUseStencilMask) when you call this.
  *
  */
 /* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
@@ -1324,8 +1345,12 @@ XPLM_API void       XPLMBeginSetupStencilMask(
  * XPLMEndSetupStencilMask
  * 
  * This function ends stencil mask setup. After this call, drawing commands
- * once again render to the screen. Call XPLMUseStencilMask to activate the
- * mask for subsequent drawing, or XPLMClearStencilMask to discard it.
+ * once again render to the screen, and stencil testing is off. Call
+ * XPLMUseStencilMask to start drawing through the mask you just recorded.
+ * 
+ * The mask stays in the stencil buffer until you overwrite it or call
+ * XPLMClearStencilMask, so you may record several masks up front and then
+ * switch among them.
  *
  */
 /* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
@@ -1334,12 +1359,26 @@ XPLM_API void       XPLMEndSetupStencilMask(void);
 /*
  * XPLMUseStencilMask
  * 
- * This function activates stencil testing. Subsequent drawing is clipped to
- * the region defined during stencil setup: only pixels where the stencil
- * buffer matches the specified bit pattern are drawn.
+ * This function selects which stencil mask clips your drawing. Subsequent
+ * drawing is clipped to the region you recorded with
+ * XPLMBeginSetupStencilMask: only pixels where the stencil buffer matches the
+ * specified bit pattern are drawn.
  * 
  * - bits: the reference bit pattern to test against.
  * - mask: a bitmask selecting which stencil bits participate in the test.
+ * 
+ * Both parameters must be in the range 0 to 255, and every bit set in bits
+ * must also be set in mask - a bit outside the mask can never match.
+ * 
+ * You may call this as often as you like within one drawing callback to
+ * switch between masks you have recorded; each call replaces the previous
+ * test. Pass (0, 0) to stop stencil testing entirely. You do not have to do
+ * that at the end of your callback - X-Plane turns stencil testing off for
+ * you, and for a window it also clears any mask you recorded, so nothing you
+ * draw leaks into another window.
+ * 
+ * This function may not be called between XPLMBeginSetupStencilMask and
+ * XPLMEndSetupStencilMask.
  *
  */
 /* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
@@ -1350,8 +1389,17 @@ XPLM_API void       XPLMUseStencilMask(
 /*
  * XPLMClearStencilMask
  * 
- * This function clears the stencil buffer and disables stencil testing.
- * Subsequent drawing is no longer clipped by the stencil mask.
+ * This function erases the entire stencil buffer, discarding every mask you
+ * have recorded. It does not change whether stencil testing is on - use
+ * XPLMUseStencilMask(0, 0) for that.
+ * 
+ * Because this throws away all eight masks at once, you rarely need it: to
+ * stop drawing through a mask, call XPLMUseStencilMask(0, 0), and to replace
+ * one, just record over it. It is safe to call at any time as a way of asking
+ * for a known starting state, even if you have recorded nothing.
+ * 
+ * Stencil testing must be off, and you may not call this between
+ * XPLMBeginSetupStencilMask and XPLMEndSetupStencilMask.
  *
  */
 /* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
@@ -1595,7 +1643,8 @@ XPLM_API void       XPLMDestroyRetainedDrawing(
  * Create an SVT display with XPLMCreateSVTDisplay and draw it with
  * XPLMSVTDisplayDrawIn. Each display instance manages its own terrain tile
  * loading and GPU state, so you can have multiple independent SVT views (e.g.
- * pilot and copilot PFDs with different feature flags).
+ * pilot and copilot PFDs at different scales). Which visual layers are drawn
+ * is chosen per draw call, not per display.
  * 
  * SVT rendering works on any aircraft, regardless of whether the stock
  * cockpit has a G1000 or other SVT-capable avionics installed.
@@ -1664,11 +1713,12 @@ typedef struct {
     /* Set to sizeof(XPLMCreateSVT_t).                                            */
      int                       structSize;
 
-    /* Bitwise OR of XPLMSVTFeatures flags to enable.                             */
-     XPLMSVTFeatures           features;
-
     /* 0 for pilot-side AHRS, 1 for copilot-side AHRS.                            */
      int                       pilotIndex;
+
+    /* Vertical scale of the 3-d view, in pixels per degree at the center of the  *
+     * display.  Must be greater than zero; the G1000 PFD uses 14.                */
+     float                     pixelsPerDegree;
 } XPLMCreateSVT_t;
 
 /*
@@ -1687,6 +1737,17 @@ typedef void * XPLMSVTDisplayRef;
  * loading terrain tiles for the current aircraft position immediately. You
  * can draw it as soon as tiles are available; before that, the draw call is a
  * no-op.
+ * 
+ * The pixelsPerDegree scale and the rectangle you pass to
+ * XPLMSVTDisplayDrawIn together determine the field of view: the rectangle is
+ * simply the scale applied to the view's angular extent. So drawing into a
+ * bigger rectangle at the same scale shows _more_ of the world at the same
+ * magnification rather than zooming in, and to zoom you change the scale, not
+ * the rectangle. Pick the same scale your pitch ladder uses and the 3-d
+ * horizon will line up with your artificial horizon.
+ * 
+ * Which visual layers are rendered is a property of the draw call, not of the
+ * display - see XPLMSVTDisplayDrawIn.
  * 
  * The returned handle must be destroyed with XPLMDestroySVTDisplay when no
  * longer needed. Handles are automatically destroyed when the owning plugin
@@ -1878,6 +1939,18 @@ typedef int XPLMEGPWSStyle;
  * centered, how it is oriented, how far it reaches, and what the terrain
  * layers should shade against.
  * 
+ * centerX and centerY are in the same panel coordinates as the rectangle in
+ * XPLMMapDrawInfo_t, NOT relative to that rectangle. This is the point the
+ * map is centered on and the point it rotates about - the same sense as
+ * XPLMTransformRotate's center. For a map centered in its own rectangle it is
+ * ((left+right)/2, (bottom+top)/2). It is also the same space
+ * XPLMMapDisplayProject reports positions in, so you can put a symbol on the
+ * map without offsetting anything yourself.
+ * 
+ * The center need not be the rectangle's midpoint, and may sit on or outside
+ * its edge: pushing it down toward the bottom edge puts more of the map ahead
+ * of the aircraft, which is how an EFIS arc mode is laid out.
+ * 
  * Two fields set the scale, and they are deliberately a matching pair:
  * roseRadius is the distance from the center of the map out to the compass
  * rose in pixels, and mapRange is that same distance in nautical miles. So
@@ -1900,11 +1973,13 @@ typedef struct {
     /* datum lon (degrees).                                                       */
      float                     datLon;
 
-    /* map center x coordinate (pixels).                                          */
-     int                       ctrX;
+    /* map center x, in the same panel coordinates as XPLMMapDrawInfo_t's         *
+     * rectangle.                                                                 */
+     int                       centerX;
 
-    /* map center y coordinate (pixels).                                          */
-     int                       ctrY;
+    /* map center y, in the same panel coordinates as XPLMMapDrawInfo_t's         *
+     * rectangle.                                                                 */
+     int                       centerY;
 
     /* center of the map out to the compass rose (pixels).                        */
      int                       roseRadius;

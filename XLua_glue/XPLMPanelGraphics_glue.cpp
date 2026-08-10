@@ -926,9 +926,10 @@ int XLuaFontAddFace(lua_State* L)
 	}
 	char const* ttf_path = xlua_checkstring(L, 2);
 
-	XPLMFontAddFace(font, ttf_path);
+	int res = XPLMFontAddFace(font, ttf_path);
+	lua_pushboolean(L, res);
 
-	return 0;
+	return 1;
 }
 
 int XLuaFontGetMetrics(lua_State* L)
@@ -1935,17 +1936,17 @@ XPLMCreateSVT_t XPLMCreateSVT_t_from_table(lua_State* L, int stackpos)
 	luaL_checktype(L, stackpos, LUA_TTABLE);
 	out.structSize = sizeof(out);
 
-	lua_getfield(L, stackpos, "features");
-	if (!lua_isnil(L, -1))
-	{
-		out.features = static_cast<XPLMSVTFeatures>(luaL_checkinteger(L, -1));
-	}
-	lua_pop(L, 1);
-
 	lua_getfield(L, stackpos, "pilotIndex");
 	if (!lua_isnil(L, -1))
 	{
 		out.pilotIndex = static_cast<int>(luaL_checkinteger(L, -1));
+	}
+	lua_pop(L, 1);
+
+	lua_getfield(L, stackpos, "pixelsPerDegree");
+	if (!lua_isnil(L, -1))
+	{
+		out.pixelsPerDegree = static_cast<float>(luaL_checknumber(L, -1));
 	}
 	lua_pop(L, 1);
 
@@ -1956,12 +1957,12 @@ void XPLMCreateSVT_t_to_table(lua_State* L, XPLMCreateSVT_t const& src)
 {
 	lua_newtable(L);
 
-	lua_pushstring(L, "features");
-	lua_pushinteger(L, src.features);
-	lua_settable(L, -3);
-
 	lua_pushstring(L, "pilotIndex");
 	lua_pushinteger(L, src.pilotIndex);
+	lua_settable(L, -3);
+
+	lua_pushstring(L, "pixelsPerDegree");
+	lua_pushnumber(L, src.pixelsPerDegree);
 	lua_settable(L, -3);
 }
 
@@ -2267,17 +2268,17 @@ XPLMMapCustomData_t XPLMMapCustomData_t_from_table(lua_State* L, int stackpos)
 	}
 	lua_pop(L, 1);
 
-	lua_getfield(L, stackpos, "ctrX");
+	lua_getfield(L, stackpos, "centerX");
 	if (!lua_isnil(L, -1))
 	{
-		out.ctrX = static_cast<int>(luaL_checkinteger(L, -1));
+		out.centerX = static_cast<int>(luaL_checkinteger(L, -1));
 	}
 	lua_pop(L, 1);
 
-	lua_getfield(L, stackpos, "ctrY");
+	lua_getfield(L, stackpos, "centerY");
 	if (!lua_isnil(L, -1))
 	{
-		out.ctrY = static_cast<int>(luaL_checkinteger(L, -1));
+		out.centerY = static_cast<int>(luaL_checkinteger(L, -1));
 	}
 	lua_pop(L, 1);
 
@@ -2373,12 +2374,12 @@ void XPLMMapCustomData_t_to_table(lua_State* L, XPLMMapCustomData_t const& src)
 	lua_pushnumber(L, src.datLon);
 	lua_settable(L, -3);
 
-	lua_pushstring(L, "ctrX");
-	lua_pushinteger(L, src.ctrX);
+	lua_pushstring(L, "centerX");
+	lua_pushinteger(L, src.centerX);
 	lua_settable(L, -3);
 
-	lua_pushstring(L, "ctrY");
-	lua_pushinteger(L, src.ctrY);
+	lua_pushstring(L, "centerY");
+	lua_pushinteger(L, src.centerY);
 	lua_settable(L, -3);
 
 	lua_pushstring(L, "roseRadius");
