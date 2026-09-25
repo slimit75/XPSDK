@@ -54,6 +54,10 @@ biggest single update, ever.
 
  - Snow levels in weather.
 
+ - The new XPLMGetProLicenseStatus API in XPLMUtilities reports whether X-Plane
+   is running under a Professional-use license; XPLM_MSG_PRO_LICENSE_CHANGED is
+   broadcast when the status settles at startup and whenever it changes.
+
 This version of the SDK requires X-Plane 12.4.4 or newer. Starting with 4.4.0
 we also have automated direct mapping from C to Lua.
 
