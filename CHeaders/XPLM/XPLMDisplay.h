@@ -1056,8 +1056,17 @@ XPLM_API void       XPLMAvionicsInjectScript(
  * 
  * Handler invoked when the page in a browser-content-type avionics device
  * calls xplane.<name>(arg). You receive the device, the argument serialised
- * as a JSON string, and your refcon; return a JSON string (or NULL) that the
- * JS Promise resolves to.
+ * as a JSON string, and your refcon. Return the JSON the JS Promise resolves
+ * to, and return it through XPLMReturnString: `return
+ * XPLMReturnString(json);`.
+ * 
+ * Returning NULL, or any pointer that did not come from XPLMReturnString (a
+ * string literal, a static buffer, a std::string's c_str()), is a plugin
+ * error: X-Plane reports it to your error callback (see XPLMSetErrorCallback)
+ * and Log.txt, drops the result, and the Promise resolves to null. A string
+ * that is not valid JSON is reported the same way. To resolve the Promise to
+ * null on purpose, return XPLMReturnString("null"). From Lua, return the JSON
+ * string itself; the Lua bindings pass it through XPLMReturnString for you.
  *
  */
 typedef const char * (* XPLMAvionicsBrowserCallback_f)(
@@ -1073,9 +1082,10 @@ typedef const char * (* XPLMAvionicsBrowserCallback_f)(
  * Registers a callback that the page running in a browser-content-type
  * avionics device can invoke as xplane.<inName>(arg). The JS call returns a
  * Promise that resolves to the value your XPLMAvionicsBrowserCallback_f
- * returns (parsed as JSON). Registering the same name again replaces the
- * previous callback. Each device has its own independent xplane.* namespace.
- * Has no effect on non-browser devices.
+ * returns (parsed as JSON). A name can only be registered once per device:
+ * registering it again is reported to your error callback and ignored, and
+ * the first registration stays. Each device has its own independent xplane.*
+ * namespace. Has no effect on non-browser devices.
  *
  */
 /* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
@@ -2040,8 +2050,16 @@ XPLM_API void       XPLMWindowInjectScript(
  * 
  * Handler invoked when the page in a browser-content-type window calls
  * xplane.<name>(arg). You receive the window, the argument serialised as a
- * JSON string, and your refcon; return a JSON string (or NULL) that the JS
- * Promise resolves to.
+ * JSON string, and your refcon. Return the JSON the JS Promise resolves to,
+ * and return it through XPLMReturnString: `return XPLMReturnString(json);`.
+ * 
+ * Returning NULL, or any pointer that did not come from XPLMReturnString (a
+ * string literal, a static buffer, a std::string's c_str()), is a plugin
+ * error: X-Plane reports it to your error callback (see XPLMSetErrorCallback)
+ * and Log.txt, drops the result, and the Promise resolves to null. A string
+ * that is not valid JSON is reported the same way. To resolve the Promise to
+ * null on purpose, return XPLMReturnString("null"). From Lua, return the JSON
+ * string itself; the Lua bindings pass it through XPLMReturnString for you.
  *
  */
 typedef const char * (* XPLMBrowserCallback_f)(
@@ -2059,9 +2077,10 @@ typedef const char * (* XPLMBrowserCallback_f)(
  * resolves to the value your `XPLMBrowserCallback_f` returns (parsed as JSON
  * -- see that callback's desc for the contract).
  * 
- * Multiple registrations against the same name on the same window overwrite
- * each other. Each window has its own independent `xplane.*` namespace;
- * functions registered on window A are not callable from window B.
+ * A name can only be registered once per window: registering it again is
+ * reported to your error callback and ignored, and the first registration
+ * stays. Each window has its own independent `xplane.*` namespace; functions
+ * registered on window A are not callable from window B.
  *
  */
 /* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
