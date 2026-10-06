@@ -389,9 +389,13 @@ Always set the structSize member to the size of your struct in bytes!
 
 This routine registers your callbacks for a built-in device. This returns a
 handle. If the returned handle is NULL, there was a problem interpreting your
-input, most likely the struct size was wrong for your SDK version.
+input, most likely the struct size was wrong for your SDK version, or you have
+already customized this device.
 If the returned handle is not NULL, your callbacks will be called according to schedule
 as long as your plugin is not deactivated, or unloaded, or you call XPLMUnregisterAvionicsCallbacks().
+
+Other plugins may customize the same device; each plugin's callbacks are called. If you already
+have a handle for the device from XPLMGetAvionicsHandle(), you get that same handle back.
 
 Note that you cannot register new callbacks for a device that is not a built-in
 one (for example a device that you have created, or a device another plugin
@@ -427,6 +431,11 @@ you to interact with it using the Avionics Device API. Use this if you do not wi
 clicks and touchscreen calls to a device, but want to interact with its popup programmatically.
 This is equivalent to calling XPLMRegisterAvionicsCallbackEx() with NULL for all callbacks.
 
+The handle is yours: every plugin gets its own handle for a device, and you get the same one each
+time you call this. It stays valid until your plugin is unloaded, whatever other plugins do with
+the device. Only your plugin may use it: another plugin passing it to the Avionics Device API gets an
+error.
+
 <div class="lua-code" markdown="1">
 <pre><code class="language-lua">-- returns XPLMAvionicsID -> assign to local/var
 local my_avionicsID = XPLMGetAvionicsHandle(
@@ -454,6 +463,7 @@ local my_avionicsID = XPLMGetAvionicsHandle(
 
 This routine unregisters your callbacks for a built-in device. You should only call this
 for handles you acquired from XPLMRegisterAvionicsCallbacksEx(). They will no longer be called.
+The handle stays valid, as if you had got it from XPLMGetAvionicsHandle().
 
 <div class="lua-code" markdown="1">
 <pre><code class="language-lua">XPLMUnregisterAvionicsCallbacks(
@@ -762,7 +772,7 @@ features. Always set the structSize member to the size of your struct in bytes!
 
 Creates a new cockpit device to be used in the 3D cockpit. You can call this at any time: if an aircraft referencing your device is loaded before your plugin, the simulator will make sure to retroactively map your display into it.
 
-            When you are done with the device, and at least before your plugin is unloaded, you should destroy the device using XPLMDestroyAvionics().
+            When you are done with the device, and at least before your plugin is unloaded, you should destroy the device using XPLMDestroyAvionics(). Only your plugin may use the returned handle.
 
 <div class="lua-code" markdown="1">
 <pre><code class="language-lua">-- returns XPLMAvionicsID -> assign to local/var

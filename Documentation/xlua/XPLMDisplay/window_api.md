@@ -1728,6 +1728,9 @@ This routine brings the window to the front of the Z-order for its layer.  Windo
 front automatically when they are created. Beyond that, you should make sure you are front before
 handling mouse clicks.
 
+You may only bring your own windows to the front; passing another plugin's window reports an error
+and does nothing.
+
 Note that this only brings your window to the front of its layer (XPLMWindowLayer).
 Thus, if you have a window in the floating window layer (xplm_WindowLayerFloatingWindows),
 but there is a modal window (in layer xplm_WindowLayerModal) above you, you would still
