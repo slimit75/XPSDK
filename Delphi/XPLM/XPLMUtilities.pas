@@ -1,5 +1,5 @@
 {
-   Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
+   Copyright 2005-2026 Laminar Research, Sandy Barbour and Ben Supnik All
    rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
 }
 
@@ -8,7 +8,24 @@ INTERFACE
 
 USES
     XPLMDefs;
-   {$A4}
+   {$A8}
+   {$Z4}
+
+TYPE
+   XPLMChar   = AnsiChar;
+   XPLMString = PAnsiChar;
+   PXPLMString = ^XPLMString;
+
+CONST
+{$IFDEF MSWINDOWS}
+   XPLM_DLL = 'XPLM_64.dll';
+{$ENDIF}
+{$IFDEF DARWIN}
+   XPLM_DLL = 'XPLM.framework/XPLM';
+{$ENDIF}
+{$IFDEF LINUX}
+   XPLM_DLL = 'XPLM_64.so';
+{$ENDIF}
 {___________________________________________________________________________
  * FILE UTILITIES
  ___________________________________________________________________________}
@@ -83,6 +100,7 @@ TYPE
     The buffer you pass should be at least 512 characters long.  The path is
     returned using the current native or OS path conventions.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetSystemPath(
                                         outSystemPath       : XPLMString);
     cdecl; external XPLM_DLL;
@@ -98,6 +116,7 @@ TYPE
     The buffer you pass should be at least 512 characters long.  The path is
     returned using the current native or OS path conventions.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetPrefsPath(
                                         outPrefsPath        : XPLMString);
     cdecl; external XPLM_DLL;
@@ -110,6 +129,7 @@ TYPE
     code that concatenates directory paths without having to #ifdef for
     platform. The character returned will reflect the current file path mode.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetDirectorySeparator: XPLMString;
     cdecl; external XPLM_DLL;
 
@@ -122,6 +142,7 @@ TYPE
     the file part of the buffer is returned; the original buffer still starts
     with the path and is null terminated with no trailing separator.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMExtractFileAndPath(
                                         inFullPath          : XPLMString) : XPLMString;
     cdecl; external XPLM_DLL;
@@ -133,8 +154,9 @@ TYPE
     path, no trailing : or / ). The output is returned as a list of NULL
     terminated strings. An index array (if specified) is filled with pointers
     into the strings. The last file is indicated by a zero-length string (and
-    NULL in the indices). This routine will return 1 if you had capacity for
-    all files or 0 if you did not. You can also skip a given number of files.
+    NULL in the indices). This routine will return true if you had capacity for
+    all files or false if you did not. You can also skip a given number of
+    files.
     
      * inDirectoryPath - a null terminated C string containing the full path to
        the directory with no trailing directory char.
@@ -167,6 +189,7 @@ TYPE
     directories. If X-Plane
     6 compatibility is needed, use your own code to iterate directories.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetDirectoryContents(
                                         inDirectoryPath     : XPLMString;
                                         inFirstReturn       : Integer;
@@ -186,6 +209,7 @@ TYPE
     folder. To clear the replay, pass a NULL file name (this is only valid with
     replay movies, not sit files).
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMLoadDataFile(
                                         inFileType          : XPLMDataFileType;
                                         inFilePath          : XPLMString) : Integer;    { Can be nil }
@@ -199,6 +223,7 @@ TYPE
     Saves the current situation or replay; paths are relative to the X-System
     folder.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMSaveDataFile(
                                         inFileType          : XPLMDataFileType;
                                         inFilePath          : XPLMString) : Integer;
@@ -208,6 +233,29 @@ TYPE
 {___________________________________________________________________________
  * X-PLANE MISC
  ___________________________________________________________________________}
+
+   {
+    XPLMReturnString
+    
+    Copies `inString` into the host-managed return slot for the current
+    callback and returns a pointer that remains valid for the duration of the
+    host's use of the callback's result. This is the only sanctioned way for an
+    XPLM callback whose return type is `const char *` to hand a string back to
+    X-Plane: returning a stack buffer, a string literal, or any other pointer
+    is a plugin error: X-Plane reports it and drops the result.
+    
+    The host pushes a return slot before invoking each `const char *` callback
+    and pops it afterwards, so callbacks must call
+    `XPLMReturnString` at most once per invocation and must not retain the
+     returned pointer past the callback's return. Passing NULL is an error:
+    `XPLMReturnString` reports it and returns NULL, so the callback's result is
+     dropped. Calling `XPLMReturnString` outside a callback that returns a
+     string is a fatal plugin error: X-Plane reports it and terminates.
+   }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
+   FUNCTION XPLMReturnString(
+                                        inString            : XPLMString) : XPLMString;
+    cdecl; external XPLM_DLL;
 
    {
     XPLMHostApplicationID
@@ -313,6 +361,30 @@ TYPE
    );
    PXPLMLanguageCode = ^XPLMLanguageCode;
 
+{$IFDEF XPLM440}
+   {
+    XPLMProLicenseStatus
+    
+    Whether this copy of X-Plane is running under a Professional-use license (a
+    HASP Pro USB key or a valid Pro digital-download product key). Demo and
+    Home installs both report xplm_ProLicense_NotLicensed.
+   }
+TYPE
+   XPLMProLicenseStatus = (
+     { X-Plane has not finished its license check yet. Wait for                   }
+     { XPLM_MSG_PRO_LICENSE_CHANGED.                                              }
+      xplm_ProLicense_Unknown                  = 0
+ 
+     { No Pro license is active.                                                  }
+     ,xplm_ProLicense_NotLicensed              = 1
+ 
+     { A Pro license is active.                                                   }
+     ,xplm_ProLicense_Licensed                 = 2
+ 
+   );
+   PXPLMProLicenseStatus = ^XPLMProLicenseStatus;
+{$ENDIF XPLM440}
+
 {$IFDEF XPLM200}
    {
     XPLMError_f
@@ -335,15 +407,16 @@ TYPE
    {
     XPLMInitialized
     
-    Deprecated: This function returns 1 if X-Plane has properly initialized the
-    plug-in system. If this routine returns 0, many XPLM functions will not
-    work.
+    Deprecated: This function returns true if X-Plane has properly initialized
+    the plug-in system. If this routine returns false, many XPLM functions will
+    not work.
     
     NOTE: because plugins are always called from within the XPLM, there is no
-    need to check for initialization; it will always return 1.  This routine is
-    deprecated - you do not need to check it before continuing within your
+    need to check for initialization; it will always return true.  This routine
+    is deprecated - you do not need to check it before continuing within your
     plugin.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMInitialized: Integer;
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM_DEPRECATED}
@@ -359,6 +432,7 @@ TYPE
     The most common use of this routine is to special-case around X-Plane
     version-specific behavior.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMGetVersions(
                                         outXPlaneVersion    : PInteger;
                                         outXPLMVersion      : PInteger;
@@ -370,8 +444,33 @@ TYPE
     
     This routine returns the langauge the sim is running in.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetLanguage: XPLMLanguageCode;
     cdecl; external XPLM_DLL;
+
+{$IFDEF XPLM440}
+   {
+    XPLMGetProLicenseStatus
+    
+    Returns whether X-Plane is currently running under a Professional-use
+    license.
+    
+    X-Plane finishes its license check after global plugins have received
+    XPluginStart and XPluginEnable, so from those callbacks a global plugin
+    sees xplm_ProLicense_Unknown. Listen for XPLM_MSG_PRO_LICENSE_CHANGED: it
+    is broadcast once the check completes and again whenever the status changes
+    during the session (for example, the user enters a product key or a key
+    expires). Aircraft plugins load after the check completes and see a settled
+    value immediately. If you see a settled value in XPluginStart, do not wait
+    for the message; the initial transition was broadcast before your plugin
+    loaded.
+    
+    Call this only from the main thread.
+   }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
+   FUNCTION XPLMGetProLicenseStatus: XPLMProLicenseStatus;
+    cdecl; external XPLM_DLL;
+{$ENDIF XPLM440}
 
 {$IFDEF XPLM200}
    {
@@ -401,6 +500,7 @@ TYPE
     definitions of the X-Plane API prototypes and cast the returned pointer to
     the correct type.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMFindSymbol(
                                         inString            : XPLMString) : pointer;
     cdecl; external XPLM_DLL;
@@ -415,10 +515,13 @@ TYPE
     performance. When you install an error callback, you will receive calls due
     to certain plugin errors, such as passing bad parameters or incorrect data.
     
-    Important: the error callback determines *programming* errors, e.g. bad API
+    Important: the error callback reports *programming* errors, e.g. bad API
     parameters. Every error that is returned by the error callback represents a
-    mistake in your plugin that you should fix. Error callbacks are not used to
-    report expected run-time problems (e.g. disk I/O errors).
+    mistake in your plugin that you should fix. A few APIs also use it to
+    explain why a call that can legitimately fail did fail - for example,
+    XPLMFontAddFace reports the reason it could not load a font file - but the
+    error callback is not a general channel for run-time conditions your plugin
+    is expected to handle.
     
     The intention is for you to install the error callback during debug
     sections and put a break-point inside your callback. This will cause you to
@@ -431,6 +534,7 @@ TYPE
     response to an error is to change code, error callbacks are not useful "in
     the field".
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSetErrorCallback(
                                         inCallback          : XPLMError_f);
     cdecl; external XPLM_DLL;
@@ -449,6 +553,7 @@ TYPE
     output make it difficult for developers to find error conditions from other
     parts of the system.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMDebugString(
                                         inString            : XPLMString);
     cdecl; external XPLM_DLL;
@@ -461,6 +566,7 @@ TYPE
     is spoken asynchronously, this function returns immediately. This function
     may not speak or print depending on user preferences.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSpeakString(
                                         inString            : XPLMString);
     cdecl; external XPLM_DLL;
@@ -473,6 +579,7 @@ TYPE
     for showing users what keyboard mappings they have set up. The string may
     read 'unknown' or be a blank or NULL string if the virtual key is unknown.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMGetVirtualKeyDescription(
                                         inVirtualKey        : XPLMChar) : XPLMString;
     cdecl; external XPLM_DLL;
@@ -487,6 +594,7 @@ TYPE
     scenery environment.  This routine is equivalent to picking "reload
     scenery" from the developer menu.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMReloadScenery;
     cdecl; external XPLM_DLL;
 
@@ -576,14 +684,14 @@ TYPE
     particular command, the phase of the command that is executing, and a
     reference pointer that you specify when registering the callback.
     
-    Your command handler should return 1 to let processing of the command
-    continue to other plugins and X-Plane, or 0 to halt processing, potentially
-    bypassing X-Plane code.
+    Your command handler should return true to let processing of the command
+    continue to other plugins and X-Plane, or false to halt processing,
+    potentially bypassing X-Plane code.
    }
      XPLMCommandCallback_f = FUNCTION(
                                     inCommand           : XPLMCommandRef;
                                     inPhase             : XPLMCommandPhase;
-                                    inRefcon            : pointer) : Integer; cdecl;
+                                    inRefcon            : pointer) : Integer; cdecl;    { Can be nil }
 
    {
     XPLMFindCommand
@@ -591,6 +699,7 @@ TYPE
     XPLMFindCommand looks up a command by name, and returns its command
     reference or NULL if the command does not exist.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMFindCommand(
                                         inName              : XPLMString) : XPLMCommandRef;
     cdecl; external XPLM_DLL;
@@ -603,6 +712,7 @@ TYPE
     called.  You must balance each XPLMCommandBegin call with an XPLMCommandEnd
     call.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMCommandBegin(
                                         inCommand           : XPLMCommandRef);
     cdecl; external XPLM_DLL;
@@ -614,6 +724,7 @@ TYPE
     XPLMCommandBegin.  You must not issue XPLMCommandEnd for a command you did
     not begin.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMCommandEnd(
                                         inCommand           : XPLMCommandRef);
     cdecl; external XPLM_DLL;
@@ -625,6 +736,7 @@ TYPE
     ends immediately. This is the equivalent of calling XPLMCommandBegin() and
     XPLMCommandEnd() back to back.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMCommandOnce(
                                         inCommand           : XPLMCommandRef);
     cdecl; external XPLM_DLL;
@@ -637,6 +749,7 @@ TYPE
     may appear in user interface contexts, such as the joystick configuration
     screen.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPLMCreateCommand(
                                         inName              : XPLMString;
                                         inDescription       : XPLMString) : XPLMCommandRef;
@@ -654,11 +767,12 @@ TYPE
     callback will run after X-Plane. (You can register a single callback both
     before and after a command.)
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMRegisterCommandHandler(
                                         inComand            : XPLMCommandRef;
                                         inHandler           : XPLMCommandCallback_f;
                                         inBefore            : Integer;
-                                        inRefcon            : pointer);
+                                        inRefcon            : pointer);    { Can be nil }
     cdecl; external XPLM_DLL;
 
    {
@@ -667,11 +781,12 @@ TYPE
     XPLMUnregisterCommandHandler removes a command callback registered with
     XPLMRegisterCommandHandler.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMUnregisterCommandHandler(
                                         inComand            : XPLMCommandRef;
                                         inHandler           : XPLMCommandCallback_f;
                                         inBefore            : Integer;
-                                        inRefcon            : pointer);
+                                        inRefcon            : pointer);    { Can be nil }
     cdecl; external XPLM_DLL;
 
 {$ENDIF XPLM200}
@@ -918,6 +1033,7 @@ TYPE
     
     Deprecated: use XPLMCommandOnce
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMSimulateKeyPress(
                                         inKeyType           : Integer;
                                         inKey               : Integer);
@@ -934,6 +1050,7 @@ TYPE
     
     Deprecated: use XPLMCommandOnce
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMCommandKeyStroke(
                                         inKey               : XPLMCommandKeyID);
     cdecl; external XPLM_DLL;
@@ -951,6 +1068,7 @@ TYPE
     
     Deprecated: use XPLMCommandBegin.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMCommandButtonPress(
                                         inButton            : XPLMCommandButtonID);
     cdecl; external XPLM_DLL;
@@ -965,12 +1083,41 @@ TYPE
     
     Deprecated: use XPLMCommandEnd.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPLMCommandButtonRelease(
                                         inButton            : XPLMCommandButtonID);
     cdecl; external XPLM_DLL;
 {$ENDIF XPLM_DEPRECATED}
 
 {$ENDIF XPLM_DEPRECATED}
+{___________________________________________________________________________
+ * Host API
+ ___________________________________________________________________________}
+
+CONST
+   XPLMUtilitiesHostApiVersion = 0;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 IMPLEMENTATION
 

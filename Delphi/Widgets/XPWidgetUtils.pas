@@ -1,5 +1,5 @@
 {
-   Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
+   Copyright 2005-2026 Laminar Research, Sandy Barbour and Ben Supnik All
    rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
 }
 
@@ -31,7 +31,24 @@ INTERFACE
 
 USES
     XPWidgetDefs;
-   {$A4}
+   {$A8}
+   {$Z4}
+
+TYPE
+   XPLMChar   = AnsiChar;
+   XPLMString = PAnsiChar;
+   PXPLMString = ^XPLMString;
+
+CONST
+{$IFDEF MSWINDOWS}
+   XPWIDGETS_DLL = 'XPWidgets_64.dll';
+{$ENDIF}
+{$IFDEF DARWIN}
+   XPWIDGETS_DLL = 'XPWidgets.framework/XPWidgets';
+{$ENDIF}
+{$IFDEF LINUX}
+   XPWIDGETS_DLL = 'XPWidgets_64.so';
+{$ENDIF}
 {___________________________________________________________________________
  * GENERAL UTILITIES
  ___________________________________________________________________________}
@@ -92,12 +109,13 @@ CONST
     is listed as PARAM_PARENT; this allows you to embed widgets created with
     XPUCreateWidgets in a widget created previously.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPUCreateWidgets(
                                         inWidgetDefs        : PXPWidgetCreate_t;
                                         inCount             : Integer;
                                         inParamParent       : XPWidgetID;
                                         ioWidgets           : PXPWidgetID);
-    cdecl; external XPWIDGETS.DLL;
+    cdecl; external XPWIDGETS_DLL;
 
    {
     XPUMoveWidgetBy
@@ -105,11 +123,12 @@ CONST
     Simply moves a widget by an amount, +x = right, +y = up, without resizing
     the widget.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    PROCEDURE XPUMoveWidgetBy(
                                         inWidget            : XPWidgetID;
                                         inDeltaX            : Integer;
                                         inDeltaY            : Integer);
-    cdecl; external XPWIDGETS.DLL;
+    cdecl; external XPWIDGETS_DLL;
 
 {___________________________________________________________________________
  * LAYOUT MANAGERS
@@ -128,12 +147,13 @@ CONST
     relative to itself as it is resized. Use this on the top level 'window'
     widget for your window.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPUFixedLayout(
                                         inMessage           : XPWidgetMessage;
                                         inWidget            : XPWidgetID;
-                                        inParam1            : intptr_t;
-                                        inParam2            : intptr_t) : Integer;
-    cdecl; external XPWIDGETS.DLL;
+                                        inParam1            : NativeInt;
+                                        inParam2            : NativeInt) : Integer;
+    cdecl; external XPWIDGETS_DLL;
 
 {___________________________________________________________________________
  * WIDGET PROC BEHAVIORS
@@ -152,13 +172,14 @@ CONST
     already. inEatClick specifies whether clicks in the background should be
     consumed by bringing the window to the foreground.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPUSelectIfNeeded(
                                         inMessage           : XPWidgetMessage;
                                         inWidget            : XPWidgetID;
-                                        inParam1            : intptr_t;
-                                        inParam2            : intptr_t;
+                                        inParam1            : NativeInt;
+                                        inParam2            : NativeInt;
                                         inEatClick          : Integer) : Integer;
-    cdecl; external XPWIDGETS.DLL;
+    cdecl; external XPWIDGETS_DLL;
 
    {
     XPUDefocusKeyboard
@@ -166,13 +187,14 @@ CONST
     This causes the widget to send keyboard focus back to X-Plane. This stops
     editing of any text fields, etc.
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPUDefocusKeyboard(
                                         inMessage           : XPWidgetMessage;
                                         inWidget            : XPWidgetID;
-                                        inParam1            : intptr_t;
-                                        inParam2            : intptr_t;
+                                        inParam1            : NativeInt;
+                                        inParam2            : NativeInt;
                                         inEatClick          : Integer) : Integer;
-    cdecl; external XPWIDGETS.DLL;
+    cdecl; external XPWIDGETS_DLL;
 
    {
     XPUDragWidget
@@ -181,16 +203,17 @@ CONST
     only the event, but the global coordinates of the drag region, which might
     be a sub-region of your widget (for example, a title bar).
    }
+    { NOT thread-safe. Use ONLY from the main thread, in callbacks.                 }
    FUNCTION XPUDragWidget(
                                         inMessage           : XPWidgetMessage;
                                         inWidget            : XPWidgetID;
-                                        inParam1            : intptr_t;
-                                        inParam2            : intptr_t;
+                                        inParam1            : NativeInt;
+                                        inParam2            : NativeInt;
                                         inLeft              : Integer;
                                         inTop               : Integer;
                                         inRight             : Integer;
                                         inBottom            : Integer) : Integer;
-    cdecl; external XPWIDGETS.DLL;
+    cdecl; external XPWIDGETS_DLL;
 
 
 IMPLEMENTATION
