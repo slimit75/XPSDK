@@ -2,7 +2,7 @@
 #define _XPLMPlanes_h_
 
 /*
- * Copyright 2005-2025 Laminar Research, Sandy Barbour and Ben Supnik All
+ * Copyright 2005-2026 Laminar Research, Sandy Barbour and Ben Supnik All
  * rights reserved.  See license.txt for usage. X-Plane SDK Version: 4.0.0
  *
  */
@@ -33,11 +33,13 @@
  *
  */
 
+
 #include "XPLMDefs.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 /***************************************************************************
  * USER AIRCRAFT ACCESS
@@ -46,6 +48,7 @@ extern "C" {
  * These routines are used to initialize and manipulate the user's aircraft.
  *
  */
+
 
 #if defined(XPLM430)
 /*
@@ -64,8 +67,10 @@ extern "C" {
  *
  */
 enum {
+
     /* The initialization succeeded.                                              */
     xplm_Init_Success                        = 0,
+
 
     /* The provided argument was invalid. This can be returned if the provided    *
      * string is not a valid json string. This error can also be returned if one  *
@@ -76,21 +81,26 @@ enum {
      * information about the problem with your input.                             */
     xplm_Init_Invalid                        = 1,
 
+
     /* The new flight could not be initialized because one of the aircraft        *
      * requested could not be found on disk or loaded.                            */
     xplm_Init_MissingAircraft                = 2,
+
 
     /* The new flight could not be initialized because one of the aircraft's'     *
      * requested liveries could not be found on disk or loaded.                   */
     xplm_Init_MissingLivery                  = 3,
 
+
     /* The new flight could not be initialized because the requested airport was  *
      * not found in X-Plane's airport database.                                   */
     xplm_Init_MissingAirport                 = 4,
 
+
     /* The new flight could not be initialized because the requested ramp start   *
      * was not found at the specified airport in X-Plane's airport database.      */
     xplm_Init_MissingRamp                    = 5,
+
 
     /* The new flight could not be initialized because the requested runway was   *
      * not found at the specified airport in X-Plane's airport database.          */
@@ -100,6 +110,7 @@ enum {
 };
 typedef int XPLMInitResult;
 #endif /* XPLM430 */
+
 #if defined(XPLM430)
 /*
  * XPLMInitFlight
@@ -113,9 +124,11 @@ typedef int XPLMInitResult;
  * succeeeded (and if not, what  caused it to fail).
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API XPLMInitResult XPLMInitFlight(
                          char const*          inJsonData);
 #endif /* XPLM430 */
+
 #if defined(XPLM430)
 /*
  * XPLMUpdateFlight
@@ -125,13 +138,15 @@ XPLM_API XPLMInitResult XPLMInitFlight(
  * https://developer.x-plane.com/article/flight-initialization-api/ for the
  * JSON format  specification.
  * 
- * Returns an XPLMInitResult enum value specifying whether hte update
+ * Returns an XPLMInitResult enum value specifying whether the update
  * suceeeded (and if not, what caused  it to fail).
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API XPLMInitResult XPLMUpdateFlight(
                          char const*          inJsonData);
 #endif /* XPLM430 */
+
 /*
  * XPLMSetUsersAircraft
  * 
@@ -144,8 +159,10 @@ XPLM_API XPLMInitResult XPLMUpdateFlight(
  * **WARNING**: this API takes a full, not relative aicraft path.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMSetUsersAircraft(
                          const char *         inAircraftPath);
+
 /*
  * XPLMPlaceUserAtAirport
  * 
@@ -155,8 +172,10 @@ XPLM_API void       XPLMSetUsersAircraft(
  * Use XPLMInitFlight for complete control over initialization.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMPlaceUserAtAirport(
                          const char *         inAirportCode);
+
 #if defined(XPLM300)
 /*
  * XPLMPlaceUserAtLocation
@@ -172,6 +191,7 @@ XPLM_API void       XPLMPlaceUserAtAirport(
  * Use XPLMInitFlight for complete control over initialization.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMPlaceUserAtLocation(
                          double               latitudeDegrees,
                          double               longitudeDegrees,
@@ -179,6 +199,7 @@ XPLM_API void       XPLMPlaceUserAtLocation(
                          float                headingDegreesTrue,
                          float                speedMetersPerSecond);
 #endif /* XPLM300 */
+
 /***************************************************************************
  * GLOBAL AIRCRAFT ACCESS
  ***************************************************************************/
@@ -188,8 +209,10 @@ XPLM_API void       XPLMPlaceUserAtLocation(
  *
  */
 
+
 /* The user's aircraft is always index 0.                                     */
 #define XPLM_USER_AIRCRAFT   0
+
 #if defined(XPLM_DEPRECATED)
 /*
  * XPLMPlaneDrawState_t
@@ -209,30 +232,42 @@ XPLM_API void       XPLMPlaceUserAtLocation(
  *
  */
 typedef struct {
+
     /* The size of the draw state struct.                                         */
      int                       structSize;
+
     /* A ratio from [0..1] describing how far the landing gear is extended.       */
      float                     gearPosition;
+
     /* Ratio of flap deployment, 0 = up, 1 = full deploy.                         */
      float                     flapRatio;
+
     /* Ratio of spoiler deployment, 0 = none, 1 = full deploy.                    */
      float                     spoilerRatio;
+
     /* Ratio of speed brake deployment, 0 = none, 1 = full deploy.                */
      float                     speedBrakeRatio;
+
     /* Ratio of slat deployment, 0 = none, 1 = full deploy.                       */
      float                     slatRatio;
+
     /* Wing sweep ratio, 0 = forward, 1 = swept.                                  */
      float                     wingSweep;
+
     /* Thrust power, 0 = none, 1 = full fwd, -1 = full reverse.                   */
      float                     thrust;
+
     /* Total pitch input for this plane.                                          */
      float                     yokePitch;
+
     /* Total Heading input for this plane.                                        */
      float                     yokeHeading;
+
     /* Total Roll input for this plane.                                           */
      float                     yokeRoll;
 } XPLMPlaneDrawState_t;
 #endif /* XPLM_DEPRECATED */
+
 /*
  * XPLMCountAircraft
  * 
@@ -243,10 +278,12 @@ typedef struct {
  * aircraft the user has enabled in the rendering options window.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMCountAircraft(
-                         int *                outTotalAircraft,
-                         int *                outActiveAircraft,
-                         XPLMPluginID *       outController);
+                         int *                outTotalAircraft,       /* Can be NULL */
+                         int *                outActiveAircraft,      /* Can be NULL */
+                         XPLMPluginID *       outController);         /* Can be NULL */
+
 /*
  * XPLMGetNthAircraftModel
  * 
@@ -256,10 +293,12 @@ XPLM_API void       XPLMCountAircraft(
  * length.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMGetNthAircraftModel(
                          int                  inIndex,
-                         char *               outFileName,
-                         char *               outPath);
+                         char                 outFileName[256],       /* Can be NULL */
+                         char                 outPath[512]);          /* Can be NULL */
+
 /***************************************************************************
  * EXCLUSIVE AIRCRAFT ACCESS
  ***************************************************************************/
@@ -268,6 +307,7 @@ XPLM_API void       XPLMGetNthAircraftModel(
  * one plugin may have this access at a time.
  *
  */
+
 
 /*
  * XPLMPlanesAvailable_f
@@ -278,12 +318,13 @@ XPLM_API void       XPLMGetNthAircraftModel(
  *
  */
 typedef void (* XPLMPlanesAvailable_f)(
-                         void *               inRefcon);
+                         void*                inRefcon);
+
 /*
  * XPLMAcquirePlanes
  * 
  * XPLMAcquirePlanes grants your plugin exclusive access to the aircraft.  It
- * returns 1 if you gain access, 0 if you do not.
+ * returns true if you gain access, false if you do not.
  * 
  * inAircraft - pass in an array of pointers to strings specifying the planes
  * you want loaded.  For any plane index you do not want loaded, pass a
@@ -298,10 +339,12 @@ typedef void (* XPLMPlanesAvailable_f)(
  * airplane access, your callback will not be called.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API int        XPLMAcquirePlanes(
-                         char **              inAircraft,             /* Can be NULL */
-                         XPLMPlanesAvailable_f inCallback,
-                         void *               inRefcon);
+                         char const*          inAircraft[],           /* Can be NULL */
+                         XPLMPlanesAvailable_f inCallback,             /* Can be NULL */
+                         void*                inRefcon);
+
 /*
  * XPLMReleasePlanes
  * 
@@ -309,7 +352,9 @@ XPLM_API int        XPLMAcquirePlanes(
  * disabled, access to planes is released for you and you must reacquire it.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMReleasePlanes(void);
+
 /*
  * XPLMSetActiveAircraftCount
  * 
@@ -318,8 +363,10 @@ XPLM_API void       XPLMReleasePlanes(void);
  * planes available is actually used.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMSetActiveAircraftCount(
                          int                  inCount);
+
 /*
  * XPLMSetAircraftModel
  * 
@@ -331,9 +378,11 @@ XPLM_API void       XPLMSetActiveAircraftCount(
  * This API takes a full aircraft path.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMSetAircraftModel(
                          int                  inIndex,
                          const char *         inAircraftPath);
+
 /*
  * XPLMDisableAIForPlane
  * 
@@ -341,8 +390,10 @@ XPLM_API void       XPLMSetAircraftModel(
  * continue to draw and be a real plane in X-Plane, but will not move itself.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMDisableAIForPlane(
                          int                  inPlaneIndex);
+
 #if defined(XPLM_DEPRECATED)
 /*
  * XPLMDrawAircraft
@@ -353,11 +404,12 @@ XPLM_API void       XPLMDisableAIForPlane(
  * 
  * This routine draws an aircraft.  It can only be called from a 3-d drawing
  * callback.  Pass in the position of the plane in OpenGL local coordinates
- * and the orientation of the plane.  A 1 for full drawing indicates that the
- * whole plane must be drawn; a 0 indicates you only need the nav lights
+ * and the orientation of the plane.  True for full drawing indicates that the
+ * whole plane must be drawn; false indicates you only need the nav lights
  * drawn. (This saves rendering time when planes are far away.)
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMDrawAircraft(
                          int                  inPlaneIndex,
                          float                inX,
@@ -369,6 +421,7 @@ XPLM_API void       XPLMDrawAircraft(
                          int                  inFullDraw,
                          XPLMPlaneDrawState_t * inDrawStateInfo);
 #endif /* XPLM_DEPRECATED */
+
 #if defined(XPLM_DEPRECATED)
 /*
  * XPLMReinitUsersPlane
@@ -388,6 +441,7 @@ XPLM_API void       XPLMDrawAircraft(
  * flight.
  *
  */
+/* NOT thread-safe. Use ONLY from the main thread, in callbacks.                 */
 XPLM_API void       XPLMReinitUsersPlane(void);
 #endif /* XPLM_DEPRECATED */
 #ifdef __cplusplus
