@@ -32,7 +32,7 @@ SDK website explains this process in more detail.
 
 This section contains per-release notes for the history of the X-Plane SDK.
 
-X-Plane SDK Release 4.4.0-r1 10/29/2026
+X-Plane SDK Release 4.4.0-r2 11/6/2026
 
 The 4.4.0 SDK includes tons of new API functionality - this is probably our
 biggest single update, ever.
